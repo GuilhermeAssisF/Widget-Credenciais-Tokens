@@ -5,6 +5,7 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
     ID_PASTA_FORMULARIO: 17765,
     SENHA_MESTRE: 'mb2026', // Defina a senha desejada aqui
     parametrosFilial: [],
+    jornadasAdmissao: [],
 
     init: function () {
         this.carregarDados();
@@ -13,6 +14,45 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         this.carregarSelectBancos();
 
         var that = this;
+        $("#btn_add_jornada_" + this.instanceId).off('click').on('click', function () {
+            var codigo = that.normalizarCodigoJornada($("#ADD_JORNADA_CODIGO_" + that.instanceId).val());
+            var descricao = $.trim($("#ADD_JORNADA_DESCRICAO_" + that.instanceId).val() || "");
+            var ativo = $("#ADD_JORNADA_ATIVO_" + that.instanceId).val() || "S";
+            var ordem = $.trim($("#ADD_JORNADA_ORDEM_" + that.instanceId).val() || "");
+
+            if (!codigo) {
+                FLUIGC.toast({ title: 'Atenção:', message: 'Informe o código da jornada.', type: 'warning' });
+                return;
+            }
+
+            var codigoChave = that.chaveCodigoJornada(codigo);
+            var duplicado = false;
+            for (var i = 0; i < that.jornadasAdmissao.length; i++) {
+                if (that.chaveCodigoJornada(that.jornadasAdmissao[i].codigo) === codigoChave) {
+                    duplicado = true;
+                    break;
+                }
+            }
+
+            if (duplicado) {
+                FLUIGC.toast({ title: 'Operação Bloqueada: ', message: 'Já existe uma jornada com este código.', type: 'danger' });
+                return;
+            }
+
+            that.jornadasAdmissao.push({
+                codigo: codigo,
+                descricao: descricao,
+                ativo: ativo,
+                ordem: ordem
+            });
+
+            that.renderizarTabelaJornadas();
+
+            $("#ADD_JORNADA_CODIGO_" + that.instanceId).val('');
+            $("#ADD_JORNADA_DESCRICAO_" + that.instanceId).val('');
+            $("#ADD_JORNADA_ATIVO_" + that.instanceId).val('S');
+            $("#ADD_JORNADA_ORDEM_" + that.instanceId).val('');
+        });
 
         // NOVO: GATILHO PARA CARREGAR AGÊNCIA QUANDO O BANCO MUDAR
         $("#ADD_BANCO_" + this.instanceId).off('change').on('change', function () {
@@ -254,6 +294,106 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         });
     },
 
+    normalizarCodigoJornada: function (valor) {
+        var codigo = $.trim(String(valor || ""));
+        codigo = codigo.replace(/\s+/g, "");
+
+        try {
+            codigo = codigo.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        } catch (e) {}
+
+        if (codigo.toUpperCase() === "CLT") {
+            return "CLT";
+        }
+
+        if (codigo.toLowerCase() === "estagio") {
+            return "Estagio";
+        }
+
+        return codigo;
+    },
+
+    chaveCodigoJornada: function (valor) {
+        return this.normalizarCodigoJornada(valor).toLowerCase();
+    },
+
+    escaparHtml: function (valor) {
+        return String(valor || "")
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    inicializarJornadasPadrao: function () {
+        if (this.jornadasAdmissao && this.jornadasAdmissao.length > 0) {
+            this.renderizarTabelaJornadas();
+            return;
+        }
+
+        this.jornadasAdmissao = [
+            {
+                codigo: "CLT",
+                descricao: "",
+                ativo: "S",
+                ordem: "1"
+            },
+            {
+                codigo: "Estagio",
+                descricao: "",
+                ativo: "S",
+                ordem: "2"
+            }
+        ];
+
+        this.renderizarTabelaJornadas();
+    },
+
+    renderizarTabelaJornadas: function () {
+        var html = "";
+        var that = this;
+
+        for (var i = 0; i < this.jornadasAdmissao.length; i++) {
+            var j = this.jornadasAdmissao[i];
+            var descricao = j.descricao ? that.escaparHtml(j.descricao) : "-";
+            var displayAtivo = j.ativo === "S" ? "Sim" : "Nao";
+            var displayOrdem = j.ordem ? j.ordem : "-";
+
+            html += "<tr>";
+            html += "<td>" + that.escaparHtml(j.codigo) + "</td>";
+            html += "<td>" + descricao + "</td>";
+            html += "<td>" + displayAtivo + "</td>";
+            html += "<td>" + that.escaparHtml(displayOrdem) + "</td>";
+            html += "<td>";
+            html += "<button type='button' class='btn btn-info btn-xs btn-edit-jornada' data-index='" + i + "' style='margin-right:5px;'><i class='flaticon flaticon-edit icon-sm'></i></button>";
+            html += "<button type='button' class='btn btn-danger btn-xs btn-remove-jornada' data-index='" + i + "'><i class='flaticon flaticon-trash icon-sm'></i></button>";
+            html += "</td>";
+            html += "</tr>";
+        }
+
+        $("#tbl_jornadas_" + this.instanceId + " tbody").html(html);
+
+        $(".btn-edit-jornada").off('click').on('click', function () {
+            var idx = $(this).data('index');
+            var item = that.jornadasAdmissao[idx];
+
+            $("#ADD_JORNADA_CODIGO_" + that.instanceId).val(item.codigo);
+            $("#ADD_JORNADA_DESCRICAO_" + that.instanceId).val(item.descricao);
+            $("#ADD_JORNADA_ATIVO_" + that.instanceId).val(item.ativo || "S");
+            $("#ADD_JORNADA_ORDEM_" + that.instanceId).val(item.ordem);
+
+            that.jornadasAdmissao.splice(idx, 1);
+            that.renderizarTabelaJornadas();
+        });
+
+        $(".btn-remove-jornada").off('click').on('click', function () {
+            var idx = $(this).data('index');
+            that.jornadasAdmissao.splice(idx, 1);
+            that.renderizarTabelaJornadas();
+        });
+    },
+
     bindings: {
         local: {
             'save-config': ['click_salvarConfiguracoes'],
@@ -367,7 +507,13 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
 
     abrirNovoFormulario: function () {
         // Zera os campos pro caso de ter sujeira
-        $("#Widget_Configuracao_Admissao_" + this.instanceId + " input.form-control").val('');
+        $("#Widget_Configuracao_Admissao_" + this.instanceId + " .form-control").val('');
+        this.documentId = null;
+        this.parametrosFilial = [];
+        this.jornadasAdmissao = [];
+        $("#config_doc_id_" + this.instanceId).val('');
+        this.renderizarTabelaParametros();
+        this.inicializarJornadasPadrao();
 
         $("#view_dashboard_" + this.instanceId).hide();
         $("#view_formulario_" + this.instanceId).fadeIn();
@@ -434,6 +580,8 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             // LIMPA A TABELA E BUSCA OS FILHOS (TABELA PAI X FILHO)
             that.parametrosFilial = [];
             that.renderizarTabelaParametros();
+            that.jornadasAdmissao = [];
+            that.renderizarTabelaJornadas();
 
             $.ajax({
                 url: WCMAPI.getServerURL() + '/api/public/ecm/dataset/datasets',
@@ -463,6 +611,32 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                             that.parametrosFilial.push(row);
                         });
                         that.renderizarTabelaParametros();
+                    }
+                }
+            });
+
+            $.ajax({
+                url: WCMAPI.getServerURL() + '/api/public/ecm/dataset/datasets',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    name: "Form_Configuracoes_Admissao",
+                    constraints: [
+                        { "_field": "tablename", "_initialValue": "tbJornadasAdmissao", "_finalValue": "tbJornadasAdmissao", "_type": 1 },
+                        { "_field": "metadata#id", "_initialValue": docId, "_finalValue": docId, "_type": 1 }
+                    ]
+                }),
+                success: function (res) {
+                    if (res && res.content && res.content.values) {
+                        res.content.values.forEach(function (item) {
+                            that.jornadasAdmissao.push({
+                                codigo: item.JORNADA_CODIGO,
+                                descricao: item.JORNADA_DESCRICAO,
+                                ativo: item.JORNADA_ATIVO,
+                                ordem: item.JORNADA_ORDEM
+                            });
+                        });
+                        that.renderizarTabelaJornadas();
                     }
                 }
             });
@@ -510,6 +684,15 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         });
 
         // Lê o ID da pasta do formulário do campo oculto, se não tiver usa o default
+        var indexJornada = 1;
+        that.jornadasAdmissao.forEach(function (jornada) {
+            formData.push({ "name": "JORNADA_CODIGO___" + indexJornada, "value": jornada.codigo || "" });
+            formData.push({ "name": "JORNADA_DESCRICAO___" + indexJornada, "value": jornada.descricao || "" });
+            formData.push({ "name": "JORNADA_ATIVO___" + indexJornada, "value": jornada.ativo || "S" });
+            formData.push({ "name": "JORNADA_ORDEM___" + indexJornada, "value": jornada.ordem || "" });
+            indexJornada++;
+        });
+
         var pastaIdStr = $("#ID_PASTA_FORMULARIO_" + that.instanceId).val();
         var pastaDestino = pastaIdStr ? parseInt(pastaIdStr) : 3483; // Lê do ecrã, se vazio usa a 3483
 
