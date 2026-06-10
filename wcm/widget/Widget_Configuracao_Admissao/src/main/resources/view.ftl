@@ -61,12 +61,12 @@
         <ul class="nav nav-tabs" role="tablist" style="margin-bottom: 15px;">
             <li role="presentation" class="active">
                 <a href="#tab_config_geral_${instanceId}" aria-controls="tab_config_geral_${instanceId}" role="tab" data-toggle="tab">
-                    Configurações Gerais
+                    Configura&ccedil;&otilde;es Gerais
                 </a>
             </li>
             <li role="presentation">
                 <a href="#tab_parametrizacoes_campos_${instanceId}" aria-controls="tab_parametrizacoes_campos_${instanceId}" role="tab" data-toggle="tab">
-                    Parametrizações de Campos
+                    Parametriza&ccedil;&otilde;es de Campos
                 </a>
             </li>
         </ul>
@@ -309,42 +309,29 @@
                     <div class="panel-heading">
                         <h3 class="panel-title">
                             <i class="flaticon flaticon-list icon-sm"></i>
-                            Jornada de Admissão
+                            Jornadas de Admiss&atilde;o
                         </h3>
                     </div>
                     <div class="panel-body">
                         <div class="alert alert-info">
-                            Cadastre aqui as opções disponíveis para o campo Jornada de Admissão.
-                            A descrição é opcional. Quando ela estiver vazia, o código será usado como texto da opção.
+                            Cadastre aqui os perfis de contrata&ccedil;&atilde;o que ser&atilde;o usados na admiss&atilde;o.
+                            As coligadas e os valores padr&atilde;o ser&atilde;o configurados nos pain&eacute;is abaixo.
                         </div>
 
-                        <div class="row" style="background: #fdfdfd; padding: 15px 0; border: 1px dashed #ccc; border-radius: 6px; margin-bottom: 20px;">
-                            <div class="col-md-3 form-group">
-                                <label>Código</label>
+                        <div class="row" style="background: #fdfdfd; padding: 15px 0; border: 1px dashed #ccc; border-radius: 6px; margin-bottom: 15px;">
+                            <div class="col-md-4 form-group">
+                                <label>C&oacute;digo</label>
                                 <input type="text" class="form-control" id="ADD_JORNADA_CODIGO_${instanceId}" placeholder="Ex: CLT">
                             </div>
 
-                            <div class="col-md-4 form-group">
-                                <label>Descrição</label>
-                                <input type="text" class="form-control" id="ADD_JORNADA_DESCRICAO_${instanceId}" placeholder="Opcional">
+                            <div class="col-md-6 form-group">
+                                <label>Descri&ccedil;&atilde;o</label>
+                                <input type="text" class="form-control" id="ADD_JORNADA_DESCRICAO_${instanceId}" placeholder="Obrigat&oacute;rio">
                             </div>
 
-                            <div class="col-md-2 form-group">
-                                <label>Ordem</label>
-                                <input type="number" class="form-control" id="ADD_JORNADA_ORDEM_${instanceId}" placeholder="1">
-                            </div>
-
-                            <div class="col-md-2 form-group">
-                                <label>Ativo</label>
-                                <select class="form-control" id="ADD_JORNADA_ATIVO_${instanceId}">
-                                    <option value="S">Sim</option>
-                                    <option value="N">Não</option>
-                                </select>
-                            </div>
-
-                            <div class="col-md-1 form-group" style="padding-top: 25px;">
+                            <div class="col-md-2 form-group" style="padding-top: 25px;">
                                 <button type="button" class="btn btn-primary btn-block" id="btn_add_jornada_${instanceId}" title="Adicionar Jornada">
-                                    <i class="flaticon flaticon-add-plus icon-sm"></i>
+                                    <i class="flaticon flaticon-add-plus icon-sm"></i> Adicionar
                                 </button>
                             </div>
                         </div>
@@ -353,15 +340,33 @@
                             <table class="table table-striped table-hover" id="tbl_jornadas_${instanceId}">
                                 <thead>
                                     <tr>
-                                        <th>Código</th>
-                                        <th>Descrição</th>
-                                        <th>Ativo</th>
-                                        <th>Ordem</th>
-                                        <th style="width: 80px;">Ação</th>
+                                        <th>C&oacute;digo</th>
+                                        <th>Descri&ccedil;&atilde;o</th>
+                                        <th>A&ccedil;&atilde;o</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel panel-warning">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            <i class="flaticon flaticon-list icon-sm"></i>
+                            Campos parametrizados por Jornada
+                        </h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="alert alert-warning">
+                            Configure abaixo os valores padr&atilde;o de cada jornada. Cada jornada cadastrada acima gera um painel pr&oacute;prio.
+                        </div>
+
+                        <div id="container_paineis_jornada_${instanceId}">
+                            <p class="text-muted">
+                                Cadastre uma jornada acima para parametrizar os campos.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -370,7 +375,7 @@
 
         <div class="text-right">
             <button type="button" class="btn btn-success btn-lg" data-save-config>
-                <i class="flaticon flaticon-save icon-sm"></i> SALVAR CONFIGURAÇÕES
+                <i class="flaticon flaticon-save icon-sm"></i> SALVAR CONFIGURA&Ccedil;&Otilde;ES
             </button>
         </div>
 

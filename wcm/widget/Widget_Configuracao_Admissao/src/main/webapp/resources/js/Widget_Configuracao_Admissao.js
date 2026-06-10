@@ -6,22 +6,34 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
     SENHA_MESTRE: 'mb2026', // Defina a senha desejada aqui
     parametrosFilial: [],
     jornadasAdmissao: [],
+    camposJornadaAdmissao: [],
+    catalogoCamposJornada: [],
+    coligadasDisponiveis: [],
+    opcoesDatasetCache: {},
+    jornadaCodigoEmEdicao: null,
+    jornadaColigadasEmEdicao: null,
 
     init: function () {
         this.carregarDados();
         this.configurarEventosSenha();
         this.carregarSelectFiliais();
         this.carregarSelectBancos();
+        this.inicializarCatalogoCamposJornada();
+        this.carregarColigadasJornada();
+        this.renderizarPaineisJornadaCampos();
 
         var that = this;
         $("#btn_add_jornada_" + this.instanceId).off('click').on('click', function () {
             var codigo = that.normalizarCodigoJornada($("#ADD_JORNADA_CODIGO_" + that.instanceId).val());
             var descricao = $.trim($("#ADD_JORNADA_DESCRICAO_" + that.instanceId).val() || "");
-            var ativo = $("#ADD_JORNADA_ATIVO_" + that.instanceId).val() || "S";
-            var ordem = $.trim($("#ADD_JORNADA_ORDEM_" + that.instanceId).val() || "");
 
             if (!codigo) {
-                FLUIGC.toast({ title: 'Atenção:', message: 'Informe o código da jornada.', type: 'warning' });
+                FLUIGC.toast({ title: 'Atencao:', message: 'Informe o codigo da jornada.', type: 'warning' });
+                return;
+            }
+
+            if (!descricao) {
+                FLUIGC.toast({ title: 'Atencao:', message: 'Informe a descricao da jornada.', type: 'warning' });
                 return;
             }
 
@@ -35,23 +47,35 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             }
 
             if (duplicado) {
-                FLUIGC.toast({ title: 'Operação Bloqueada: ', message: 'Já existe uma jornada com este código.', type: 'danger' });
+                FLUIGC.toast({ title: 'Operacao Bloqueada: ', message: 'Ja existe uma jornada com este codigo.', type: 'danger' });
                 return;
             }
 
             that.jornadasAdmissao.push({
                 codigo: codigo,
                 descricao: descricao,
-                ativo: ativo,
-                ordem: ordem
+                coligadas: that.jornadaColigadasEmEdicao || "*",
+                ativo: "S",
+                ordem: ""
             });
 
+            if (that.jornadaCodigoEmEdicao && that.jornadaCodigoEmEdicao !== codigo) {
+                for (var f = 0; f < that.camposJornadaAdmissao.length; f++) {
+                    if (that.chaveCodigoJornada(that.camposJornadaAdmissao[f].jornadaCodigo) === that.chaveCodigoJornada(that.jornadaCodigoEmEdicao)) {
+                        that.camposJornadaAdmissao[f].jornadaCodigo = codigo;
+                        that.camposJornadaAdmissao[f].jsonExtra = that.atualizarJsonExtraCampoJornada(that.camposJornadaAdmissao[f]);
+                    }
+                }
+                that.renderizarTabelaCamposJornada();
+            }
+            that.jornadaCodigoEmEdicao = null;
+            that.jornadaColigadasEmEdicao = null;
+
             that.renderizarTabelaJornadas();
+            that.renderizarPaineisJornadaCampos();
 
             $("#ADD_JORNADA_CODIGO_" + that.instanceId).val('');
             $("#ADD_JORNADA_DESCRICAO_" + that.instanceId).val('');
-            $("#ADD_JORNADA_ATIVO_" + that.instanceId).val('S');
-            $("#ADD_JORNADA_ORDEM_" + that.instanceId).val('');
         });
 
         // NOVO: GATILHO PARA CARREGAR AGÊNCIA QUANDO O BANCO MUDAR
@@ -235,6 +259,406 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         });
     },
 
+    inicializarCatalogoCamposJornada: function () {
+        this.catalogoCamposJornada = [
+            {
+                id: "cpTipoContrato",
+                label: "Tipo de Contrato",
+                tipo: "select",
+                opcoes: [
+                    { valor: "Individual", texto: "Contrato individual de trabalho" },
+                    { valor: "TCE", texto: "TCE - Termo de compromisso de estagio" }
+                ]
+            },
+            {
+                id: "cpContratoPrazo",
+                label: "Contrato com Prazo",
+                tipo: "select",
+                opcoes: [
+                    { valor: "indeterminado", texto: "Prazo Indeterminado" },
+                    { valor: "determinado", texto: "Prazo Determinado" },
+                    { valor: "experiencia", texto: "Experiencia" }
+                ]
+            },
+            {
+                id: "FUN_IDDESCFUN",
+                label: "Funcao",
+                tipo: "zoom",
+                datasetId: "ds_irho_funcao",
+                valueField: "CODIGO",
+                textField: "IDDESC_FUNCAO"
+            },
+            {
+                id: "FUN_IDDESCTURN",
+                label: "Turno de Trabalho",
+                tipo: "zoom",
+                datasetId: "ds_irho_turnoTrabalho",
+                valueField: "CODIGO",
+                textField: "IDDESC_HORARIO"
+            },
+            {
+                id: "FUN_SEQTURN_IDDESC_AD",
+                label: "Sequencia do Turno",
+                tipo: "zoom",
+                datasetId: "ds_irho_seqTurno",
+                valueField: "INDINICIOHOR",
+                textField: "INDINICIOHOR"
+            },
+            {
+                id: "FUN_TPJORNADA",
+                label: "Tipo de Jornada",
+                tipo: "select",
+                opcoes: [
+                    { valor: "1", texto: "Submetidos a Horario" },
+                    { valor: "2", texto: "Atividade Externa" },
+                    { valor: "3", texto: "Funcoes Especificadas" },
+                    { valor: "4", texto: "Teletrabalho" }
+                ]
+            },
+            {
+                id: "FUN_TIPOPGTO_IDDESC_AD",
+                label: "Tipo de Recebimento",
+                tipo: "zoom",
+                datasetId: "ds_irho_codRecebimento",
+                valueField: "CODCLIENTE",
+                textField: "IDDESC_TIPORECEBIMENTO"
+            },
+            {
+                id: "cpQtdHorasMes",
+                label: "Jornada Mensal",
+                tipo: "texto"
+            },
+            {
+                id: "FUN_VLRSALARIO",
+                label: "Salario",
+                tipo: "moeda"
+            },
+            {
+                id: "FUN_ALTFGTS",
+                label: "FGTS",
+                tipo: "select",
+                opcoes: [
+                    { valor: "1", texto: "1 - Optante" },
+                    { valor: "2", texto: "2 - Nao Optante" }
+                ]
+            },
+            {
+                id: "cpRegimePrevidenciario",
+                label: "Regime Previdenciario",
+                tipo: "select",
+                opcoes: [
+                    { valor: "1", texto: "RGPS" },
+                    { valor: "2", texto: "RPPS" },
+                    { valor: "3", texto: "Exterior" }
+                ]
+            },
+            {
+                id: "FUN_CODDESCSINDICATOFILIACAO",
+                label: "Sindicato Filiacao",
+                tipo: "zoom",
+                datasetId: "ds_irho_sindicato",
+                valueField: "IDDESC_SINDICATO",
+                textField: "IDDESC_SINDICATO"
+            },
+            {
+                id: "FUN_CODOCORRENCIA_IDDESC",
+                label: "Ocorrencia SEFIP",
+                tipo: "zoom",
+                datasetId: "ds_IRHO_codOcorrenciaSefip",
+                valueField: "IDDESC_OCORRENCIA",
+                textField: "IDDESC_OCORRENCIA"
+            },
+            {
+                id: "FUN_CATSEFIP_IDDESC",
+                label: "Categoria SEFIP",
+                tipo: "zoom",
+                datasetId: "ds_irho_codCategoriaSefip",
+                valueField: "IDDESC_CATSEFIP",
+                textField: "IDDESC_CATSEFIP"
+            },
+            {
+                id: "cpSituacaoRais",
+                label: "Situacao RAIS",
+                tipo: "zoom",
+                datasetId: "ds_irho_situacaoRais",
+                valueField: "IDDESC_SITUACAO",
+                textField: "IDDESC_SITUACAO"
+            },
+            {
+                id: "FUN_VINCEMPREG_IDDESC_AD",
+                label: "Vinculo RAIS",
+                tipo: "zoom",
+                datasetId: "ds_irho_vinculoRais",
+                valueField: "IDDESC_VINCULO",
+                textField: "IDDESC_VINCULO"
+            },
+            {
+                id: "MarcaPonto",
+                label: "Marca Ponto",
+                tipo: "select",
+                opcoes: [
+                    { valor: "1", texto: "Sim" },
+                    { valor: "2", texto: "Nao" }
+                ]
+            },
+            {
+                id: "ContSalBrad",
+                label: "Conta Salario",
+                tipo: "select",
+                opcoes: [
+                    { valor: "1", texto: "Sim" },
+                    { valor: "2", texto: "Nao" }
+                ]
+            }
+        ];
+
+        this.atualizarSelectCamposJornada();
+    },
+
+    obterCampoDoCatalogo: function (campoId) {
+        for (var i = 0; i < this.catalogoCamposJornada.length; i++) {
+            if (this.catalogoCamposJornada[i].id === campoId) {
+                return this.catalogoCamposJornada[i];
+            }
+        }
+        return null;
+    },
+
+    atualizarSelectCamposJornada: function () {
+        var select = $("#ADD_CJ_CAMPO_ID_" + this.instanceId);
+        if (!select.length) {
+            return;
+        }
+
+        var valorAtual = select.val();
+        select.empty();
+        select.append('<option value="">Selecione</option>');
+
+        for (var i = 0; i < this.catalogoCamposJornada.length; i++) {
+            var campo = this.catalogoCamposJornada[i];
+            select.append('<option value="' + this.escapeHtml(campo.id) + '">' + this.escapeHtml(campo.label) + ' (' + this.escapeHtml(campo.tipo) + ')</option>');
+        }
+
+        if (valorAtual) {
+            select.val(valorAtual);
+        }
+    },
+
+    atualizarSelectJornadasCampos: function () {
+        var select = $("#ADD_CJ_JORNADA_CODIGO_" + this.instanceId);
+        if (!select.length) {
+            return;
+        }
+
+        var valorAtual = select.val();
+        select.empty();
+        select.append('<option value="">Selecione</option>');
+
+        for (var i = 0; i < this.jornadasAdmissao.length; i++) {
+            var jornada = this.jornadasAdmissao[i];
+            var texto = jornada.codigo;
+            if (jornada.descricao) {
+                texto += ' - ' + jornada.descricao;
+            }
+            select.append('<option value="' + this.escapeHtml(jornada.codigo) + '">' + this.escapeHtml(texto) + '</option>');
+        }
+
+        if (valorAtual) {
+            select.val(valorAtual);
+        }
+    },
+
+    carregarColigadasJornada: function () {
+        var that = this;
+        that.coligadasDisponiveis = [
+            { id: "*", texto: "Todas" }
+        ];
+
+        try {
+            $.ajax({
+                url: '/api/public/ecm/dataset/datasets',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    name: "ds_irho_empresaFilial"
+                }),
+                success: function (res) {
+                    try {
+                        var itens = res && res.content && res.content.values ? res.content.values : [];
+                        var empresas = {};
+
+                        for (var i = 0; i < itens.length; i++) {
+                            var item = itens[i];
+                            var idEmp = item.ID_EMPRESA;
+                            if (!idEmp || empresas[idEmp]) {
+                                continue;
+                            }
+
+                            var nomeEmpresa = item.NOMECOMERCIAL || item.EMPRESA || item.NOME_EMPRESA || item.IDDESC_EMPRESAFILIAL || idEmp;
+                            empresas[idEmp] = true;
+                            that.coligadasDisponiveis.push({
+                                id: String(idEmp),
+                                texto: String(idEmp) + ' - ' + String(nomeEmpresa)
+                            });
+                        }
+                        that.renderizarTodasColigadasDosPaineis();
+                    } catch (e) {
+                        console.warn('Erro ao montar coligadas da jornada.', e);
+                    }
+                },
+                error: function (err) {
+                    console.warn('Falha ao carregar coligadas da jornada.', err);
+                    that.renderizarTodasColigadasDosPaineis();
+                }
+            });
+        } catch (e2) {
+            console.warn('Falha ao iniciar carregamento de coligadas.', e2);
+            that.renderizarTodasColigadasDosPaineis();
+        }
+    },
+
+    normalizarColigadasJornada: function (valor) {
+        if (!valor) {
+            return ["*"];
+        }
+
+        var lista = [];
+
+        if ($.isArray(valor)) {
+            lista = valor;
+        } else {
+            lista = String(valor).split(",");
+        }
+
+        var resultado = [];
+
+        for (var i = 0; i < lista.length; i++) {
+            var item = $.trim(String(lista[i] || ""));
+
+            if (!item) {
+                continue;
+            }
+
+            if (item === "*") {
+                return ["*"];
+            }
+
+            if (resultado.indexOf(item) === -1) {
+                resultado.push(item);
+            }
+        }
+
+        return resultado.length ? resultado : ["*"];
+    },
+
+    obterTextoColigada: function (idColigada) {
+        var id = String(idColigada || "");
+
+        if (id === "*") {
+            return "Todas";
+        }
+
+        for (var i = 0; i < this.coligadasDisponiveis.length; i++) {
+            if (String(this.coligadasDisponiveis[i].id) === id) {
+                return this.coligadasDisponiveis[i].texto;
+            }
+        }
+
+        return id;
+    },
+
+    montarOptionsColigadasDisponiveis: function (selecionadas) {
+        var html = '<option value="">Selecione uma coligada...</option>';
+        var selecionadasNorm = this.normalizarColigadasJornada(selecionadas);
+
+        html += '<option value="*">Todas</option>';
+
+        for (var i = 0; i < this.coligadasDisponiveis.length; i++) {
+            var coligada = this.coligadasDisponiveis[i];
+            var id = String(coligada.id);
+
+            if (id === "*") {
+                continue;
+            }
+
+            if (selecionadasNorm.indexOf(id) !== -1) {
+                continue;
+            }
+
+            html += '<option value="' + this.escapeHtml(id) + '">' + this.escapeHtml(coligada.texto) + '</option>';
+        }
+
+        return html;
+    },
+
+    renderizarColigadasSelecionadasWrapper: function ($wrapper) {
+        if (!$wrapper || !$wrapper.length) {
+            return;
+        }
+
+        var valor = $wrapper.find(".jornada-coligadas").val();
+        var selecionadas = this.normalizarColigadasJornada(valor);
+        var valorFinal = selecionadas.indexOf("*") !== -1 ? "*" : selecionadas.join(",");
+        var html = "";
+
+        for (var i = 0; i < selecionadas.length; i++) {
+            var id = selecionadas[i];
+            var texto = this.obterTextoColigada(id);
+
+            html += '<span class="label label-info" style="display:inline-block; margin:3px; padding:7px 9px;">';
+            html += this.escapeHtml(texto);
+
+            if (id !== "*") {
+                html += ' <button type="button" class="btn-remove-coligada-jornada" data-coligada="' + this.escapeHtml(id) + '" style="border:0;background:transparent;color:#fff;margin-left:6px;font-weight:bold;">&times;</button>';
+            }
+
+            html += '</span>';
+        }
+
+        $wrapper.find(".jornada-coligadas").val(valorFinal);
+        $wrapper.find(".coligadas-selecionadas").html(html || '<span class="text-muted">Todas</span>');
+        $wrapper.find(".jornada-coligada-disponivel").html(this.montarOptionsColigadasDisponiveis(selecionadas));
+
+        if (valorFinal === "*") {
+            $wrapper.find(".jornada-coligada-disponivel").val("*");
+        } else {
+            $wrapper.find(".jornada-coligada-disponivel").val("");
+        }
+    },
+
+    renderizarTodasColigadasDosPaineis: function () {
+        var that = this;
+
+        $("#container_paineis_jornada_" + this.instanceId + " .coligadas-jornada-wrapper").each(function () {
+            that.renderizarColigadasSelecionadasWrapper($(this));
+        });
+    },
+
+    obterCampoParametrizado: function (jornadaCodigo, campoId) {
+        var chaveJornada = this.chaveCodigoJornada(jornadaCodigo);
+
+        for (var i = 0; i < this.camposJornadaAdmissao.length; i++) {
+            var item = this.camposJornadaAdmissao[i];
+
+            if (
+                this.chaveCodigoJornada(item.jornadaCodigo) === chaveJornada &&
+                item.campoId === campoId
+            ) {
+                return item;
+            }
+        }
+
+        return null;
+    },
+
+    atualizarJsonExtraCampoJornada: function (campoPayload, campoCatalogo) {
+        var catalogo = campoCatalogo || this.obterCampoDoCatalogo(campoPayload.campoId);
+        return JSON.stringify({
+            datasetId: catalogo && catalogo.datasetId ? catalogo.datasetId : "",
+            campoId: catalogo && catalogo.id ? catalogo.id : (campoPayload ? campoPayload.campoId : "")
+        });
+    },
+
     renderizarTabelaParametros: function () {
         var html = "";
         var that = this;
@@ -317,54 +741,91 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         return this.normalizarCodigoJornada(valor).toLowerCase();
     },
 
+    escapeHtml: function (valor) {
+        if (valor === null || valor === undefined) {
+            return "";
+        }
+        return String(valor)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    },
+
     escaparHtml: function (valor) {
-        return String(valor || "")
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+        return this.escapeHtml(valor);
     },
 
     inicializarJornadasPadrao: function () {
         if (this.jornadasAdmissao && this.jornadasAdmissao.length > 0) {
             this.renderizarTabelaJornadas();
+            this.renderizarPaineisJornadaCampos();
             return;
         }
 
         this.jornadasAdmissao = [
             {
-                codigo: "CLT",
-                descricao: "",
+                codigo: "ASSOCIADO",
+                descricao: "Associado",
+                coligadas: "2,3,10,11,15,16",
                 ativo: "S",
-                ordem: "1"
+                ordem: ""
             },
             {
-                codigo: "Estagio",
-                descricao: "",
+                codigo: "CLT_COM_CONTROLE",
+                descricao: "CLT - Com Controle de Jornada",
+                coligadas: "1,9",
                 ativo: "S",
-                ordem: "2"
+                ordem: ""
+            },
+            {
+                codigo: "CLT_SEM_CONTROLE",
+                descricao: "CLT - Sem Controle de Jornada",
+                coligadas: "1,9",
+                ativo: "S",
+                ordem: ""
+            },
+            {
+                codigo: "CLT_RECEPCAO",
+                descricao: "CLT - Recepcao",
+                coligadas: "1,9",
+                ativo: "S",
+                ordem: ""
+            },
+            {
+                codigo: "ESTAGIARIO",
+                descricao: "Estagiario",
+                coligadas: "*",
+                ativo: "S",
+                ordem: ""
+            },
+            {
+                codigo: "JOVEM_APRENDIZ",
+                descricao: "Jovem Aprendiz",
+                coligadas: "*",
+                ativo: "S",
+                ordem: ""
             }
         ];
 
         this.renderizarTabelaJornadas();
+        this.renderizarPaineisJornadaCampos();
+        this.atualizarSelectJornadasCampos();
     },
 
     renderizarTabelaJornadas: function () {
         var html = "";
         var that = this;
+        var jornadasOrdenadas = (this.jornadasAdmissao || []).slice(0);
 
-        for (var i = 0; i < this.jornadasAdmissao.length; i++) {
-            var j = this.jornadasAdmissao[i];
-            var descricao = j.descricao ? that.escaparHtml(j.descricao) : "-";
-            var displayAtivo = j.ativo === "S" ? "Sim" : "Nao";
-            var displayOrdem = j.ordem ? j.ordem : "-";
+        for (var i = 0; i < jornadasOrdenadas.length; i++) {
+            var j = jornadasOrdenadas[i];
+            var descricao = j.descricao ? that.escapeHtml(j.descricao) : "-";
 
             html += "<tr>";
-            html += "<td>" + that.escaparHtml(j.codigo) + "</td>";
+            html += "<td>" + that.escapeHtml(j.codigo) + "</td>";
             html += "<td>" + descricao + "</td>";
-            html += "<td>" + displayAtivo + "</td>";
-            html += "<td>" + that.escaparHtml(displayOrdem) + "</td>";
             html += "<td>";
             html += "<button type='button' class='btn btn-info btn-xs btn-edit-jornada' data-index='" + i + "' style='margin-right:5px;'><i class='flaticon flaticon-edit icon-sm'></i></button>";
             html += "<button type='button' class='btn btn-danger btn-xs btn-remove-jornada' data-index='" + i + "'><i class='flaticon flaticon-trash icon-sm'></i></button>";
@@ -376,22 +837,500 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
 
         $(".btn-edit-jornada").off('click').on('click', function () {
             var idx = $(this).data('index');
-            var item = that.jornadasAdmissao[idx];
+            var item = jornadasOrdenadas[idx];
 
             $("#ADD_JORNADA_CODIGO_" + that.instanceId).val(item.codigo);
             $("#ADD_JORNADA_DESCRICAO_" + that.instanceId).val(item.descricao);
-            $("#ADD_JORNADA_ATIVO_" + that.instanceId).val(item.ativo || "S");
-            $("#ADD_JORNADA_ORDEM_" + that.instanceId).val(item.ordem);
 
-            that.jornadasAdmissao.splice(idx, 1);
+            var chaveEditar = that.chaveCodigoJornada(item.codigo);
+            that.jornadaCodigoEmEdicao = item.codigo;
+            that.jornadaColigadasEmEdicao = item.coligadas || "*";
+            that.jornadasAdmissao = that.jornadasAdmissao.filter(function (registro) {
+                return that.chaveCodigoJornada(registro.codigo) !== chaveEditar;
+            });
             that.renderizarTabelaJornadas();
+            that.renderizarPaineisJornadaCampos();
         });
 
         $(".btn-remove-jornada").off('click').on('click', function () {
             var idx = $(this).data('index');
-            that.jornadasAdmissao.splice(idx, 1);
+            var item = jornadasOrdenadas[idx];
+            if (item && item.codigo) {
+                var chaveRemover = that.chaveCodigoJornada(item.codigo);
+                var listaFiltrada = [];
+                for (var c = 0; c < that.camposJornadaAdmissao.length; c++) {
+                    if (that.chaveCodigoJornada(that.camposJornadaAdmissao[c].jornadaCodigo) !== chaveRemover) {
+                        listaFiltrada.push(that.camposJornadaAdmissao[c]);
+                    }
+                }
+                that.camposJornadaAdmissao = listaFiltrada;
+                that.jornadasAdmissao = that.jornadasAdmissao.filter(function (registro) {
+                    return that.chaveCodigoJornada(registro.codigo) !== chaveRemover;
+                });
+            }
             that.renderizarTabelaJornadas();
+            that.renderizarPaineisJornadaCampos();
         });
+
+        that.atualizarSelectJornadasCampos();
+    },
+
+    renderizarPaineisJornadaCampos: function () {
+        var that = this;
+        var $container = $("#container_paineis_jornada_" + this.instanceId);
+
+        if (!$container.length) {
+            return;
+        }
+
+        var jornadasOrdenadas = (this.jornadasAdmissao || []).slice(0);
+
+        if (!jornadasOrdenadas.length) {
+            $container.html('<p class="text-muted">Cadastre uma jornada acima para parametrizar os campos.</p>');
+            this.vincularEventosPaineisJornada();
+            return;
+        }
+
+        var html = "";
+
+        for (var i = 0; i < jornadasOrdenadas.length; i++) {
+            var jornada = jornadasOrdenadas[i];
+            var codigo = jornada.codigo || "";
+
+            html += '<div class="panel panel-default painel-param-jornada" data-jornada="' + that.escapeHtml(codigo) + '">';
+            html += '<div class="panel-heading painel-jornada-toggle" data-jornada="' + that.escapeHtml(codigo) + '" style="cursor:pointer;">';
+            html += '<h3 class="panel-title">';
+            html += that.escapeHtml((jornada.codigo || 'Jornada') + (jornada.descricao ? ' - ' + jornada.descricao : ''));
+            html += ' <span class="pull-right"><i class="fluigicon fluigicon-chevron-down icon-sm"></i></span>';
+            html += '</h3>';
+            html += '<small>Configure coligadas e valores padrao desta jornada</small>';
+            html += '</div>';
+            html += '<div class="panel-body painel-jornada-body" data-jornada="' + that.escapeHtml(codigo) + '" data-loaded="false" style="display:none;">';
+            html += '<p class="text-muted">Clique para carregar...</p>';
+            html += '</div>';
+            html += '</div>';
+        }
+
+        $container.html(html);
+        $container.find(".painel-jornada-body").hide();
+        this.vincularEventosPaineisJornada();
+    },
+
+    popularSelectsCamposZoom: function () {
+        // Mantida apenas por compatibilidade.
+        // Os zooms agora carregam sob demanda em carregarOpcoesZoomCampo().
+    },
+
+    carregarOpcoesZoomCampo: function ($select) {
+        var that = this;
+
+        if (!$select || !$select.length) {
+            return;
+        }
+
+        if ($select.attr("data-loaded") === "true" || $select.attr("data-loading") === "true") {
+            return;
+        }
+
+        var datasetId = $.trim($select.attr("data-dataset") || "");
+        var valueField = $.trim($select.attr("data-value-field") || "");
+        var textField = $.trim($select.attr("data-text-field") || "");
+        var valorAtual = $.trim($select.attr("data-valor-atual") || $select.val() || "");
+
+        if (!datasetId) {
+            $select.html('<option value="">Dataset nao configurado</option>');
+            return;
+        }
+
+        $select.attr("data-loading", "true");
+        $select.html('<option value="">Carregando...</option>');
+
+        var preencher = function (itens) {
+            var html = '<option value=""></option>';
+            var valorEncontrado = false;
+
+            for (var i = 0; i < itens.length; i++) {
+                var item = itens[i] || {};
+                var valorItem = item[valueField];
+
+                if (valorItem === undefined && valueField) {
+                    valorItem = item[String(valueField).toUpperCase()];
+                }
+
+                if (valorItem === undefined && valueField) {
+                    valorItem = item[String(valueField).toLowerCase()];
+                }
+
+                if (valorItem === undefined || valorItem === null) {
+                    valorItem = "";
+                }
+
+                var textoItem = item[textField];
+
+                if (textoItem === undefined && textField) {
+                    textoItem = item[String(textField).toUpperCase()];
+                }
+
+                if (textoItem === undefined && textField) {
+                    textoItem = item[String(textField).toLowerCase()];
+                }
+
+                if (textoItem === undefined || textoItem === null || textoItem === "") {
+                    textoItem = valorItem;
+                }
+
+                if (String(valorItem) === String(valorAtual)) {
+                    valorEncontrado = true;
+                }
+
+                html += '<option value="' + that.escapeHtml(valorItem) + '"' + (String(valorItem) === String(valorAtual) ? ' selected="selected"' : '') + '>' + that.escapeHtml(textoItem) + '</option>';
+            }
+
+            if (valorAtual && !valorEncontrado) {
+                html += '<option value="' + that.escapeHtml(valorAtual) + '" selected="selected">' + that.escapeHtml(valorAtual) + '</option>';
+            }
+
+            $select.html(html);
+            if (valorAtual) {
+                $select.val(valorAtual);
+            }
+
+            $select.attr("data-loaded", "true");
+            $select.removeAttr("data-loading");
+        };
+
+        if (that.opcoesDatasetCache.hasOwnProperty(datasetId)) {
+            preencher(that.opcoesDatasetCache[datasetId] || []);
+            return;
+        }
+
+        $.ajax({
+            url: '/api/public/ecm/dataset/datasets',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                name: datasetId
+            }),
+            success: function (res) {
+                var itens = res && res.content && res.content.values ? res.content.values : [];
+                that.opcoesDatasetCache[datasetId] = itens;
+                preencher(itens);
+            },
+            error: function () {
+                that.opcoesDatasetCache[datasetId] = [];
+                $select.html('<option value="">Erro ao carregar</option>');
+                $select.attr("data-loaded", "true");
+                $select.removeAttr("data-loading");
+            }
+        });
+    },
+
+    renderizarConteudoJornada: function (jornadaCodigo) {
+        var that = this;
+        var codigo = $.trim(String(jornadaCodigo || ""));
+
+        if (!codigo) {
+            return;
+        }
+
+        var jornada = null;
+        for (var i = 0; i < this.jornadasAdmissao.length; i++) {
+            if (that.chaveCodigoJornada(this.jornadasAdmissao[i].codigo) === that.chaveCodigoJornada(codigo)) {
+                jornada = this.jornadasAdmissao[i];
+                break;
+            }
+        }
+
+        if (!jornada) {
+            return;
+        }
+
+        var $body = $("#container_paineis_jornada_" + this.instanceId + ' .painel-jornada-body[data-jornada="' + codigo + '"]');
+        if (!$body.length) {
+            return;
+        }
+
+        var coligadasSelecionadas = that.normalizarColigadasJornada(jornada.coligadas);
+        var valorHiddenColigadas = coligadasSelecionadas.indexOf("*") !== -1 ? "*" : coligadasSelecionadas.join(",");
+        var html = "";
+
+        html += '<div class="table-responsive">';
+        html += '<table class="table table-striped table-hover table-condensed tabela-campos-jornada" data-jornada="' + that.escapeHtml(codigo) + '">';
+        html += '<thead><tr><th style="width: 35%;">Parametro</th><th>Valor padrao</th></tr></thead>';
+        html += '<tbody>';
+        html += '<tr class="linha-coligadas-jornada" data-jornada="' + that.escapeHtml(codigo) + '">';
+        html += '<td>Coligadas habilitadas</td>';
+        html += '<td>';
+        html += '<div class="coligadas-jornada-wrapper" data-jornada="' + that.escapeHtml(codigo) + '">';
+        html += '<input type="hidden" class="jornada-coligadas" value="' + that.escapeHtml(valorHiddenColigadas) + '">';
+        html += '<div class="row">';
+        html += '<div class="col-md-9">';
+        html += '<select class="form-control jornada-coligada-disponivel">';
+        html += this.montarOptionsColigadasDisponiveis(coligadasSelecionadas);
+        html += '</select>';
+        html += '</div>';
+        html += '<div class="col-md-3">';
+        html += '<button type="button" class="btn btn-primary btn-block btn-add-coligada-jornada">Adicionar</button>';
+        html += '</div>';
+        html += '</div>';
+        html += '<div class="coligadas-selecionadas" style="margin-top:10px;"></div>';
+        html += '</div>';
+        html += '</td>';
+        html += '</tr>';
+
+        for (var f = 0; f < this.catalogoCamposJornada.length; f++) {
+            var campo = this.catalogoCamposJornada[f];
+            var configuracaoCampo = that.obterCampoParametrizado(codigo, campo.id) || {};
+            var valorCampo = configuracaoCampo.valor || "";
+            var tipoCampo = campo.tipo || "texto";
+
+            html += '<tr data-jornada="' + that.escapeHtml(codigo) + '" data-campo-id="' + that.escapeHtml(campo.id) + '">';
+            html += '<td>' + that.escapeHtml(campo.label) + '</td>';
+            html += '<td>';
+
+            if (tipoCampo === 'select') {
+                html += '<select class="form-control campo-jornada-valor" data-tipo="select">';
+                html += '<option value="">Selecione</option>';
+                for (var o = 0; o < (campo.opcoes || []).length; o++) {
+                    var opcao = campo.opcoes[o];
+                    html += '<option value="' + that.escapeHtml(opcao.valor) + '"' + (String(opcao.valor) === String(valorCampo) ? ' selected="selected"' : '') + '>' + that.escapeHtml(opcao.texto) + '</option>';
+                }
+                html += '</select>';
+            } else if (tipoCampo === 'zoom') {
+                html += '<select class="form-control campo-jornada-valor campo-jornada-zoom" data-dataset="' + that.escapeHtml(campo.datasetId || '') + '" data-value-field="' + that.escapeHtml(campo.valueField || '') + '" data-text-field="' + that.escapeHtml(campo.textField || '') + '" data-valor-atual="' + that.escapeHtml(valorCampo) + '" data-loaded="false">';
+                if (valorCampo) {
+                    html += '<option value="' + that.escapeHtml(valorCampo) + '" selected="selected">' + that.escapeHtml(valorCampo) + '</option>';
+                    html += '<option value="">Clique para carregar...</option>';
+                } else {
+                    html += '<option value="" selected="selected">Clique para carregar...</option>';
+                }
+                html += '</select>';
+            } else {
+                html += '<input type="text" class="form-control campo-jornada-valor" value="' + that.escapeHtml(valorCampo) + '">';
+            }
+
+            html += '</td>';
+            html += '</tr>';
+        }
+
+        html += '</tbody></table>';
+        html += '</div>';
+
+        $body.html(html);
+        $body.attr("data-loaded", "true");
+        this.renderizarColigadasSelecionadasWrapper($body.find(".coligadas-jornada-wrapper"));
+        this.vincularEventosPaineisJornada();
+    },
+
+    alternarPainelJornada: function (jornadaCodigo) {
+        var that = this;
+        var $container = $("#container_paineis_jornada_" + this.instanceId);
+        var $body = $container.find('.painel-jornada-body[data-jornada="' + jornadaCodigo + '"]');
+        var $painel = $body.closest('.painel-param-jornada');
+
+        this.sincronizarJornadasDosPaineis();
+        this.sincronizarCamposJornadaDosPaineis();
+
+        if ($body.is(":visible")) {
+            $body.hide();
+            $painel.removeClass("jornada-aberta");
+            return;
+        }
+
+        $container.find(".painel-jornada-body:visible").hide();
+        $container.find(".painel-param-jornada").removeClass("jornada-aberta");
+
+        if ($body.attr("data-loaded") !== "true") {
+            this.renderizarConteudoJornada(jornadaCodigo);
+        }
+
+        $body.show();
+        $painel.addClass("jornada-aberta");
+    },
+
+    sincronizarCamposJornadaDosPaineis: function () {
+        var that = this;
+        var antigos = this.camposJornadaAdmissao || [];
+        var jornadasRenderizadas = {};
+        var novaLista = [];
+
+        $("#container_paineis_jornada_" + this.instanceId + " .painel-jornada-body[data-loaded='true']").each(function () {
+            var jornada = $.trim($(this).attr("data-jornada") || "");
+            if (jornada) {
+                jornadasRenderizadas[that.chaveCodigoJornada(jornada)] = true;
+            }
+        });
+
+        for (var i = 0; i < antigos.length; i++) {
+            var chaveAntiga = that.chaveCodigoJornada(antigos[i].jornadaCodigo);
+            if (!jornadasRenderizadas[chaveAntiga]) {
+                novaLista.push(antigos[i]);
+            }
+        }
+
+        $("#container_paineis_jornada_" + this.instanceId + " .painel-jornada-body[data-loaded='true'] .tabela-campos-jornada tbody tr").each(function () {
+            var $linha = $(this);
+            var jornadaCodigo = $.trim($linha.attr('data-jornada') || '');
+            var campoId = $.trim($linha.attr('data-campo-id') || '');
+            if (!campoId) {
+                return;
+            }
+            var campoCatalogo = that.obterCampoDoCatalogo(campoId) || {};
+            var $valor = $linha.find('.campo-jornada-valor').first();
+
+            novaLista.push({
+                jornadaCodigo: jornadaCodigo,
+                campoId: campoId,
+                campoLabel: campoCatalogo.label || $linha.find('td').eq(0).text(),
+                campoTipo: campoCatalogo.tipo || "",
+                valor: $.trim($valor.val() || ''),
+                descricao: "",
+                ativo: "S",
+                ordem: "",
+                jsonExtra: JSON.stringify({
+                    datasetId: campoCatalogo.datasetId || "",
+                    campoId: campoCatalogo.id || campoId,
+                    valueField: campoCatalogo.valueField || "",
+                    textField: campoCatalogo.textField || ""
+                })
+            });
+        });
+
+        this.camposJornadaAdmissao = novaLista;
+    },
+
+    sincronizarJornadasDosPaineis: function () {
+        var that = this;
+        var jornadasAtuais = (this.jornadasAdmissao || []).slice(0);
+        this.jornadasAdmissao = [];
+
+        $("#container_paineis_jornada_" + this.instanceId + " .painel-param-jornada").each(function () {
+            var $painel = $(this);
+            var codigo = $.trim($painel.attr('data-jornada') || '');
+            var descricao = "";
+            var jornadaAtual = null;
+            var $body = $painel.find('.painel-jornada-body[data-jornada="' + codigo + '"]');
+            var coligadas = "*";
+
+            for (var j = 0; j < jornadasAtuais.length; j++) {
+                if (that.chaveCodigoJornada(jornadasAtuais[j].codigo) === that.chaveCodigoJornada(codigo)) {
+                    jornadaAtual = jornadasAtuais[j];
+                    break;
+                }
+            }
+
+            if (jornadaAtual && jornadaAtual.descricao) {
+                descricao = jornadaAtual.descricao;
+            }
+
+            if ($body.length && $body.attr("data-loaded") === "true") {
+                coligadas = $.trim($body.find('.jornada-coligadas').val() || "*");
+                if (!coligadas) {
+                    coligadas = "*";
+                }
+            } else if (jornadaAtual && jornadaAtual.coligadas) {
+                coligadas = jornadaAtual.coligadas;
+            }
+
+            if (!codigo) {
+                return;
+            }
+
+            that.jornadasAdmissao.push({
+                codigo: codigo,
+                descricao: descricao,
+                coligadas: coligadas,
+                ativo: 'S',
+                ordem: ''
+            });
+        });
+    },
+
+    vincularEventosPaineisJornada: function () {
+        var that = this;
+        var namespace = '.widgetPainelJornada' + this.instanceId;
+        var seletorContainer = '#container_paineis_jornada_' + this.instanceId;
+
+        $(document).off('input' + namespace + ' change' + namespace + ' blur' + namespace, seletorContainer + ' :input');
+        $(document).on('input' + namespace + ' change' + namespace + ' blur' + namespace, seletorContainer + ' :input', function () {
+            that.sincronizarJornadasDosPaineis();
+            that.sincronizarCamposJornadaDosPaineis();
+        });
+
+        $(document).off('click' + namespace, seletorContainer + ' .painel-jornada-toggle');
+        $(document).on('click' + namespace, seletorContainer + ' .painel-jornada-toggle', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var jornadaCodigo = $.trim($(this).attr('data-jornada') || "");
+            if (!jornadaCodigo) {
+                return;
+            }
+            that.alternarPainelJornada(jornadaCodigo);
+        });
+
+        $(document).off('focusin' + namespace + ' mousedown' + namespace, seletorContainer + ' .campo-jornada-zoom');
+        $(document).on('focusin' + namespace + ' mousedown' + namespace, seletorContainer + ' .campo-jornada-zoom', function () {
+            that.carregarOpcoesZoomCampo($(this));
+        });
+
+        $(document).off('click' + namespace, seletorContainer + ' .btn-add-coligada-jornada');
+        $(document).on('click' + namespace, seletorContainer + ' .btn-add-coligada-jornada', function () {
+            var $wrapper = $(this).closest('.coligadas-jornada-wrapper');
+            var $hidden = $wrapper.find('.jornada-coligadas');
+            var $select = $wrapper.find('.jornada-coligada-disponivel');
+            var valorAdicionar = $.trim($select.val() || "");
+
+            if (!valorAdicionar) {
+                return;
+            }
+
+            var selecionadas = that.normalizarColigadasJornada($hidden.val());
+
+            if (valorAdicionar === "*") {
+                selecionadas = ["*"];
+            } else {
+                if (selecionadas.indexOf("*") !== -1) {
+                    selecionadas = [];
+                }
+
+                if (selecionadas.indexOf(valorAdicionar) === -1) {
+                    selecionadas.push(valorAdicionar);
+                }
+            }
+
+            var valorFinal = selecionadas.indexOf("*") !== -1 ? "*" : selecionadas.join(",");
+            $hidden.val(valorFinal);
+            that.renderizarColigadasSelecionadasWrapper($wrapper);
+            that.sincronizarJornadasDosPaineis();
+        });
+
+        $(document).off('click' + namespace, seletorContainer + ' .btn-remove-coligada-jornada');
+        $(document).on('click' + namespace, seletorContainer + ' .btn-remove-coligada-jornada', function () {
+            var $wrapper = $(this).closest('.coligadas-jornada-wrapper');
+            var $hidden = $wrapper.find('.jornada-coligadas');
+            var remover = $.trim($(this).attr('data-coligada') || "");
+            var selecionadas = that.normalizarColigadasJornada($hidden.val());
+            var novaLista = [];
+
+            for (var i = 0; i < selecionadas.length; i++) {
+                if (selecionadas[i] !== remover && selecionadas[i] !== "*") {
+                    novaLista.push(selecionadas[i]);
+                }
+            }
+
+            if (!novaLista.length) {
+                novaLista = ["*"];
+            }
+
+            var valorFinal = novaLista.indexOf("*") !== -1 ? "*" : novaLista.join(",");
+            $hidden.val(valorFinal);
+            that.renderizarColigadasSelecionadasWrapper($wrapper);
+            that.sincronizarJornadasDosPaineis();
+        });
+    },
+
+    renderizarTabelaCamposJornada: function () {
+        this.renderizarPaineisJornadaCampos();
     },
 
     bindings: {
@@ -511,9 +1450,15 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         this.documentId = null;
         this.parametrosFilial = [];
         this.jornadasAdmissao = [];
+        this.camposJornadaAdmissao = [];
+        this.jornadaCodigoEmEdicao = null;
+        this.jornadaColigadasEmEdicao = null;
         $("#config_doc_id_" + this.instanceId).val('');
         this.renderizarTabelaParametros();
         this.inicializarJornadasPadrao();
+        this.renderizarPaineisJornadaCampos();
+        this.atualizarSelectCamposJornada();
+        this.carregarColigadasJornada();
 
         $("#view_dashboard_" + this.instanceId).hide();
         $("#view_formulario_" + this.instanceId).fadeIn();
@@ -557,6 +1502,8 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
 
         if (configDaMemoria) {
             that.documentId = docId;
+            that.jornadaCodigoEmEdicao = null;
+            that.jornadaColigadasEmEdicao = null;
             if ($("#config_doc_id_" + that.instanceId).length > 0) {
                 $("#config_doc_id_" + that.instanceId).val(docId);
             }
@@ -582,6 +1529,9 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             that.renderizarTabelaParametros();
             that.jornadasAdmissao = [];
             that.renderizarTabelaJornadas();
+            that.renderizarPaineisJornadaCampos();
+            that.camposJornadaAdmissao = [];
+            that.renderizarPaineisJornadaCampos();
 
             $.ajax({
                 url: WCMAPI.getServerURL() + '/api/public/ecm/dataset/datasets',
@@ -632,11 +1582,45 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                             that.jornadasAdmissao.push({
                                 codigo: item.JORNADA_CODIGO,
                                 descricao: item.JORNADA_DESCRICAO,
+                                coligadas: item.JORNADA_COLIGADAS,
                                 ativo: item.JORNADA_ATIVO,
                                 ordem: item.JORNADA_ORDEM
                             });
                         });
                         that.renderizarTabelaJornadas();
+                        that.atualizarSelectJornadasCampos();
+                        that.renderizarPaineisJornadaCampos();
+                    }
+                }
+            });
+
+            $.ajax({
+                url: WCMAPI.getServerURL() + '/api/public/ecm/dataset/datasets',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    name: "Form_Configuracoes_Admissao",
+                    constraints: [
+                        { "_field": "tablename", "_initialValue": "tbCamposJornadaAdmissao", "_finalValue": "tbCamposJornadaAdmissao", "_type": 1 },
+                        { "_field": "metadata#id", "_initialValue": docId, "_finalValue": docId, "_type": 1 }
+                    ]
+                }),
+                success: function (res) {
+                    if (res && res.content && res.content.values) {
+                        res.content.values.forEach(function (item) {
+                            that.camposJornadaAdmissao.push({
+                                jornadaCodigo: item.CJ_JORNADA_CODIGO,
+                                campoId: item.CJ_CAMPO_ID,
+                                campoLabel: item.CJ_CAMPO_LABEL,
+                                campoTipo: item.CJ_CAMPO_TIPO,
+                                valor: item.CJ_VALOR,
+                                descricao: item.CJ_DESCRICAO,
+                                jsonExtra: item.CJ_JSON_EXTRA,
+                                ativo: item.CJ_ATIVO,
+                                ordem: item.CJ_ORDEM
+                            });
+                        });
+                        that.renderizarPaineisJornadaCampos();
                     }
                 }
             });
@@ -650,6 +1634,9 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         var that = this;
         var hiddenVal = $("#config_doc_id_" + that.instanceId).val();
         var idDocumento = hiddenVal ? hiddenVal : that.documentId;
+
+        this.sincronizarJornadasDosPaineis();
+        this.sincronizarCamposJornadaDosPaineis();
 
         var camposForm = [
             "FLUIG_SOAP_USER", "FLUIG_SOAP_PASS",
@@ -688,9 +1675,24 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         that.jornadasAdmissao.forEach(function (jornada) {
             formData.push({ "name": "JORNADA_CODIGO___" + indexJornada, "value": jornada.codigo || "" });
             formData.push({ "name": "JORNADA_DESCRICAO___" + indexJornada, "value": jornada.descricao || "" });
+            formData.push({ "name": "JORNADA_COLIGADAS___" + indexJornada, "value": jornada.coligadas || "*" });
             formData.push({ "name": "JORNADA_ATIVO___" + indexJornada, "value": jornada.ativo || "S" });
             formData.push({ "name": "JORNADA_ORDEM___" + indexJornada, "value": jornada.ordem || "" });
             indexJornada++;
+        });
+
+        var indexCampoJornada = 1;
+        that.camposJornadaAdmissao.forEach(function (item) {
+            formData.push({ "name": "CJ_JORNADA_CODIGO___" + indexCampoJornada, "value": item.jornadaCodigo || "" });
+            formData.push({ "name": "CJ_CAMPO_ID___" + indexCampoJornada, "value": item.campoId || "" });
+            formData.push({ "name": "CJ_CAMPO_LABEL___" + indexCampoJornada, "value": item.campoLabel || "" });
+            formData.push({ "name": "CJ_CAMPO_TIPO___" + indexCampoJornada, "value": item.campoTipo || "" });
+            formData.push({ "name": "CJ_VALOR___" + indexCampoJornada, "value": item.valor || "" });
+            formData.push({ "name": "CJ_DESCRICAO___" + indexCampoJornada, "value": item.descricao || "" });
+            formData.push({ "name": "CJ_JSON_EXTRA___" + indexCampoJornada, "value": item.jsonExtra || "" });
+            formData.push({ "name": "CJ_ATIVO___" + indexCampoJornada, "value": item.ativo || "S" });
+            formData.push({ "name": "CJ_ORDEM___" + indexCampoJornada, "value": item.ordem || "" });
+            indexCampoJornada++;
         });
 
         var pastaIdStr = $("#ID_PASTA_FORMULARIO_" + that.instanceId).val();
