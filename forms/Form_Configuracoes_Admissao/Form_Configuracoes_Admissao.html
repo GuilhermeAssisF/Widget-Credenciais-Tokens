@@ -1,0 +1,218 @@
+<html>
+
+<head>
+    <link type="text/css" rel="stylesheet" href="/style-guide/css/fluig-style-guide.min.css" />
+    <script type="text/javascript" src="/portal/resources/js/jquery/jquery.js"></script>
+    <script type="text/javascript" src="/portal/resources/js/jquery/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="/portal/resources/js/mustache/mustache-min.js"></script>
+    <script type="text/javascript" src="/style-guide/js/fluig-style-guide.min.js" charset="utf-8"></script>
+</head>
+
+<body>
+    <div class="fluig-style-guide">
+        <form name="form" role="form">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><i class="flaticon flaticon-settings icon-sm"></i> Configurações do Portal
+                        de Admissão</h3>
+                </div>
+                <div class="panel-body">
+                    <div class="alert alert-info">
+                        Este formulário armazena as configurações globais de integração para o processo de Admissão
+                        Digital (RM e Widgets Públicas). A edição destes campos deve ser feita exclusivamente através da
+                        <strong>Widget de Configuração</strong>.
+                    </div>
+
+                    <!-- DADOS DO RM -->
+                    <fieldset>
+                        <legend>Integração RM TOTVS (SOAP)</legend>
+                        <div class="row">
+                            <div class="col-md-4 form-group">
+                                <label for="RM_USER">Usuário RM</label>
+                                <input type="text" class="form-control" name="RM_USER" id="RM_USER" readonly>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label for="RM_PASS">Senha RM</label>
+                                <input type="password" class="form-control" name="RM_PASS" id="RM_PASS" readonly>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 form-group">
+                                <label for="RM_ENDPOINT_WS">Endpoint WSDATASERVER</label>
+                                <input type="text" class="form-control" name="RM_ENDPOINT_WS" id="RM_ENDPOINT_WS"
+                                    readonly>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- URLS BASE -->
+                    <fieldset>
+                        <legend>URLs das Páginas Públicas</legend>
+                        <div class="row">
+                            <div class="col-md-12 form-group">
+                                <label for="URL_PAGINA_CANDIDATO">Página do Candidato (Preenchimento Inicial)</label>
+                                <input type="text" class="form-control" name="URL_PAGINA_CANDIDATO"
+                                    id="URL_PAGINA_CANDIDATO" readonly>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 form-group">
+                                <label for="URL_PAGINA_CORRECAO">Página de Correção (Devolutiva do RH)</label>
+                                <input type="text" class="form-control" name="URL_PAGINA_CORRECAO"
+                                    id="URL_PAGINA_CORRECAO" readonly>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 form-group">
+                                <label for="URL_PAGINA_ASSINATURA">Página de Assinatura (Contrato)</label>
+                                <input type="text" class="form-control" name="URL_PAGINA_ASSINATURA"
+                                    id="URL_PAGINA_ASSINATURA" readonly>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- OAUTH E INTEGRAÇÃO FLUIG (API PROXY) -->
+                    <fieldset>
+                        <legend>Credenciais de Integração Fluig (Páginas Públicas)</legend>
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label for="FLUIG_SOAP_USER">Usuário Genérico (Integração SOAP)</label>
+                                <input type="text" class="form-control" name="FLUIG_SOAP_USER" id="FLUIG_SOAP_USER"
+                                    readonly>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="FLUIG_SOAP_PASS">Senha Genérica (Integração SOAP)</label>
+                                <input type="password" class="form-control" name="FLUIG_SOAP_PASS" id="FLUIG_SOAP_PASS"
+                                    readonly>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label for="FLUIG_OAUTH_CONSUMER_KEY">Consumer Key</label>
+                                <input type="text" class="form-control" name="FLUIG_OAUTH_CONSUMER_KEY"
+                                    id="FLUIG_OAUTH_CONSUMER_KEY" readonly>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="FLUIG_OAUTH_CONSUMER_SECRET">Consumer Secret</label>
+                                <input type="password" class="form-control" name="FLUIG_OAUTH_CONSUMER_SECRET"
+                                    id="FLUIG_OAUTH_CONSUMER_SECRET" readonly>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label for="FLUIG_OAUTH_TOKEN">App Token</label>
+                                <input type="text" class="form-control" name="FLUIG_OAUTH_TOKEN" id="FLUIG_OAUTH_TOKEN"
+                                    readonly>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label for="FLUIG_OAUTH_TOKEN_SECRET">Token Secret</label>
+                                <input type="password" class="form-control" name="FLUIG_OAUTH_TOKEN_SECRET"
+                                    id="FLUIG_OAUTH_TOKEN_SECRET" readonly>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Mapeamento do Workflow (Painel RH)</legend>
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label for="FLUIG_PROCESS_ID_ADMISSAO">ID do Processo (Código no Fluig)</label>
+                                <input type="text" class="form-control" name="FLUIG_PROCESS_ID_ADMISSAO"
+                                    id="FLUIG_PROCESS_ID_ADMISSAO" readonly>
+                            </div>
+                            <div class="col-md-2 form-group">
+                                <label for="ATIVIDADE_CANDIDATO_DADOS">ID Atividade (Dados)</label>
+                                <input type="text" class="form-control" name="ATIVIDADE_CANDIDATO_DADOS"
+                                    id="ATIVIDADE_CANDIDATO_DADOS" readonly>
+                            </div>
+                            <div class="col-md-2 form-group">
+                                <label for="ATIVIDADE_CANDIDATO_CORRECAO">ID Atividade (Correção)</label>
+                                <input type="text" class="form-control" name="ATIVIDADE_CANDIDATO_CORRECAO"
+                                    id="ATIVIDADE_CANDIDATO_CORRECAO" readonly>
+                            </div>
+                            <div class="col-md-2 form-group">
+                                <label for="ATIVIDADE_CANDIDATO_ASSINATURA">ID Ativ. (Assinatura)</label>
+                                <input type="text" class="form-control" name="ATIVIDADE_CANDIDATO_ASSINATURA"
+                                    id="ATIVIDADE_CANDIDATO_ASSINATURA" readonly>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label for="ATIVIDADE_RH_CONCLUSAO">ID Atividade (Finalizado)</label>
+                                <input type="text" class="form-control" name="ATIVIDADE_RH_CONCLUSAO"
+                                    id="ATIVIDADE_RH_CONCLUSAO" readonly>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Configurações Avançadas de Sistema</legend>
+                        <div class="row">
+                            <div class="col-md-4 form-group">
+                                <label for="FLUIG_TENANT_ID">Tenant ID (Empresa Fluig)</label>
+                                <input type="text" class="form-control" name="FLUIG_TENANT_ID" id="FLUIG_TENANT_ID"
+                                    readonly>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label for="ID_PASTA_FORMULARIO">ID da Pasta do Formulário</label>
+                                <input type="text" class="form-control" name="ID_PASTA_FORMULARIO"
+                                    id="ID_PASTA_FORMULARIO" readonly>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label for="ID_PASTA_RAIZ_CANDIDATOS">ID Pasta Raiz (Geração de Pastas)</label>
+                                <input type="text" class="form-control" name="ID_PASTA_RAIZ_CANDIDATOS" id="ID_PASTA_RAIZ_CANDIDATOS" readonly>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 form-group">
+                                <label for="TAE_USER">Usuário Serviço (TOTVS Assinatura)</label>
+                                <input type="text" class="form-control" name="TAE_USER" id="TAE_USER" readonly>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label for="TAE_PASS">Senha Serviço (TOTVS Assinatura)</label>
+                                <input type="password" class="form-control" name="TAE_PASS" id="TAE_PASS" readonly>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label for="URL_BASE_TAE">URL Base TOTVS Assinatura</label>
+                                <input type="text" class="form-control" name="URL_BASE_TAE" id="URL_BASE_TAE" readonly>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Parâmetros Específicos por Filial</legend>
+                        <div class="table-responsive">
+                            <table class="table table-bordered" tablename="tbParametrosFilial" id="tbParametrosFilial"
+                                noaddbutton="true" nodeletebutton="true">
+                                <thead>
+                                    <tr>
+                                        <th>Empresa</th>
+                                        <th>Filial</th>
+                                        <th>Banco Padrão</th>
+                                        <th>Agência Padrão</th>
+                                        <th>% Adiantamento</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><input type="text" class="form-control" name="PARAM_COD_EMPRESA"
+                                                id="PARAM_COD_EMPRESA" readonly></td>
+                                        <td><input type="text" class="form-control" name="PARAM_COD_FILIAL"
+                                                id="PARAM_COD_FILIAL" readonly></td>
+                                        <td><input type="text" class="form-control" name="PARAM_BANCO" id="PARAM_BANCO"
+                                                readonly></td>
+                                        <td><input type="text" class="form-control" name="PARAM_AGENCIA"
+                                                id="PARAM_AGENCIA" readonly></td>
+                                        <td><input type="text" class="form-control" name="PARAM_PADT" id="PARAM_PADT"
+                                                readonly></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </fieldset>
+
+                </div>
+            </div>
+        </form>
+    </div>
+</body>
+
+</html>

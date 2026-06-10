@@ -1,0 +1,40 @@
+/* Coloque aqui seu codigo CSS */
+.aviso-coligadas {
+    background-color: #f0f7ff;
+    border-left: 4px solid #005bb5;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.aviso-coligadas-titulo {
+    color: #003a75;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.aviso-coligadas-titulo i {
+    margin-right: 8px;
+    font-size: 16px;
+}
+
+.pilulas-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pilula-coligada {
+    background-color: #ffffff;
+    border: 1px solid #cce0ff;
+    color: #005bb5;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
