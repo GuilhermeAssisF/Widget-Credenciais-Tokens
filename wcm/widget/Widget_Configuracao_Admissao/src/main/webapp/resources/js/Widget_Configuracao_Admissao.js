@@ -281,6 +281,34 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                 ]
             },
             {
+                id: "zoomTipoFuncionario",
+                label: "Tipo Funcionario",
+                tipo: "zoom",
+                datasetId: "ds_irho_tipoFuncionario",
+                valueField: "CODIGO",
+                textField: "TIPO_FUNCIONARIO",
+                hiddenFields: [
+                    {
+                        id: "codTipoFuncionario",
+                        field: "CODIGO"
+                    }
+                ]
+            },
+            {
+                id: "zoom_categoriaEsocial",
+                label: "Categoria eSocial",
+                tipo: "zoom",
+                datasetId: "ds_irho_categoriaEsocial",
+                valueField: "IDDESC_CATEGORIAESOCIAL",
+                textField: "IDDESC_CATEGORIAESOCIAL",
+                hiddenFields: [
+                    {
+                        id: "FUN_CATESOCIAL",
+                        field: "CODIGO"
+                    }
+                ]
+            },
+            {
                 id: "FUN_IDDESCFUN",
                 label: "Funcao",
                 tipo: "zoom",
@@ -299,10 +327,19 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             {
                 id: "FUN_SEQTURN_IDDESC_AD",
                 label: "Sequencia do Turno",
-                tipo: "zoom",
-                datasetId: "ds_irho_seqTurno",
-                valueField: "INDINICIOHOR",
-                textField: "INDINICIOHOR"
+                tipo: "select",
+                opcoes: [
+                    { valor: "1", texto: "1" },
+                    { valor: "2", texto: "2" },
+                    { valor: "3", texto: "3" },
+                    { valor: "4", texto: "4" },
+                    { valor: "5", texto: "5" },
+                    { valor: "6", texto: "6" },
+                    { valor: "7", texto: "7" },
+                    { valor: "8", texto: "8" },
+                    { valor: "9", texto: "9" },
+                    { valor: "10", texto: "10" }
+                ]
             },
             {
                 id: "FUN_TPJORNADA",
@@ -651,11 +688,209 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         return null;
     },
 
+    obterValorCampoNoPainelJornada: function ($campoAtual, campoIdReferencia) {
+        if (!$campoAtual || !$campoAtual.length || !campoIdReferencia) {
+            return "";
+        }
+
+        var $painel = $campoAtual.closest(".painel-param-jornada");
+
+        if (!$painel.length) {
+            return "";
+        }
+
+        var $linhaReferencia = $painel.find('tr[data-campo-id="' + campoIdReferencia + '"]').first();
+
+        if (!$linhaReferencia.length) {
+            return "";
+        }
+
+        var $campoReferencia = $linhaReferencia.find(".campo-jornada-valor").first();
+
+        if (!$campoReferencia.length) {
+            return "";
+        }
+
+        var valor = $campoReferencia.val();
+
+        if (valor === undefined || valor === null || valor === "") {
+            valor = $campoReferencia.attr("data-valor-atual") || "";
+        }
+
+        if ($.isArray(valor)) {
+            valor = valor.length ? valor[0] : "";
+        }
+
+        return $.trim(String(valor || ""));
+    },
+
+    obterColigadaBaseDoPainelJornada: function ($campoAtual) {
+        if (!$campoAtual || !$campoAtual.length) {
+            return "";
+        }
+
+        var $painel = $campoAtual.closest(".painel-param-jornada");
+
+        if (!$painel.length) {
+            return "";
+        }
+
+        var $selectColigadas = $painel.find(".jornada-coligadas").first();
+
+        if (!$selectColigadas.length) {
+            return "";
+        }
+
+        var valorColigada = $selectColigadas.val();
+        var coligadas = [];
+
+        if ($.isArray(valorColigada)) {
+            coligadas = valorColigada;
+        } else if (typeof valorColigada === "string" && valorColigada.indexOf(",") >= 0) {
+            coligadas = valorColigada.split(",");
+        } else if (valorColigada !== undefined && valorColigada !== null) {
+            coligadas = [valorColigada];
+        }
+
+        for (var i = 0; i < coligadas.length; i++) {
+            var item = $.trim(String(coligadas[i] || ""));
+
+            if (item && item !== "*") {
+                return item;
+            }
+        }
+
+        return "";
+    },
+
+    resolverValorItemZoom: function (item, valueField) {
+        if (!item || !valueField) {
+            return "";
+        }
+
+        var chaves = [
+            valueField,
+            String(valueField).toUpperCase(),
+            String(valueField).toLowerCase()
+        ];
+
+        for (var i = 0; i < chaves.length; i++) {
+            var chave = chaves[i];
+
+            if (item[chave] !== undefined && item[chave] !== null && item[chave] !== "") {
+                return item[chave];
+            }
+        }
+
+        return "";
+    },
+
+    resolverTextoItemZoom: function (item, textField, valorItem) {
+        if (!item) {
+            return valorItem;
+        }
+
+        var chaves = [
+            textField,
+            String(textField || "").toUpperCase(),
+            String(textField || "").toLowerCase()
+        ];
+
+        for (var i = 0; i < chaves.length; i++) {
+            var chave = chaves[i];
+
+            if (chave && item[chave] !== undefined && item[chave] !== null && item[chave] !== "") {
+                return item[chave];
+            }
+        }
+
+        return valorItem;
+    },
+
+    montarChaveCacheZoom: function (datasetId, constraints) {
+        return String(datasetId || "") + "::" + JSON.stringify(constraints || []);
+    },
+
+    limparSelectZoomCampo: function ($select, mensagem, valorPreservado) {
+        if (!$select || !$select.length) {
+            return;
+        }
+
+        var valor = $.trim(String(valorPreservado || ""));
+        var html = "";
+
+        if (valor) {
+            html += '<option value="' + this.escapeHtml(valor) + '" selected="selected">' + this.escapeHtml(valor) + '</option>';
+        }
+
+        html += '<option value="">' + this.escapeHtml(mensagem || "Clique para carregar...") + '</option>';
+
+        $select.attr("data-loaded", "false");
+        $select.removeAttr("data-loading");
+        $select.html(html);
+
+        if (valor) {
+            $select.val(valor);
+            $select.attr("data-valor-atual", valor);
+        } else {
+            $select.attr("data-valor-atual", "");
+        }
+    },
+
+    limparCamposZoomDependentesDoCampo: function ($campoAtual, campoIdAlterado, ehColigada) {
+        if (!$campoAtual || !$campoAtual.length) {
+            return;
+        }
+
+        var $painel = $campoAtual.closest(".painel-param-jornada");
+
+        if (!$painel.length) {
+            return;
+        }
+
+        var that = this;
+
+        $painel.find(".campo-jornada-zoom[data-campo-id]").each(function () {
+            var $select = $(this);
+            var campoIdZoom = $.trim($select.attr("data-campo-id") || "");
+            var campoZoom = that.obterCampoDoCatalogo(campoIdZoom);
+
+            if (!campoZoom) {
+                return;
+            }
+
+            var deveLimpar = false;
+            var dependeDe = campoZoom.dependeDe || [];
+
+            if (ehColigada && campoZoom.usaColigadaJornada) {
+                deveLimpar = true;
+            }
+
+            for (var i = 0; i < dependeDe.length && !deveLimpar; i++) {
+                var dependencia = dependeDe[i] || {};
+
+                if (String(dependencia.campoId || "") === String(campoIdAlterado || "")) {
+                    deveLimpar = true;
+                }
+            }
+
+            if (deveLimpar) {
+                that.limparSelectZoomCampo($select, "Clique para carregar...");
+            }
+        });
+    },
+
     atualizarJsonExtraCampoJornada: function (campoPayload, campoCatalogo) {
         var catalogo = campoCatalogo || this.obterCampoDoCatalogo(campoPayload.campoId);
         return JSON.stringify({
             datasetId: catalogo && catalogo.datasetId ? catalogo.datasetId : "",
-            campoId: catalogo && catalogo.id ? catalogo.id : (campoPayload ? campoPayload.campoId : "")
+            campoId: catalogo && catalogo.id ? catalogo.id : (campoPayload ? campoPayload.campoId : ""),
+            valueField: catalogo && catalogo.valueField ? catalogo.valueField : "",
+            textField: catalogo && catalogo.textField ? catalogo.textField : "",
+            hiddenFields: catalogo && catalogo.hiddenFields ? catalogo.hiddenFields : [],
+            dependeDe: catalogo && catalogo.dependeDe ? catalogo.dependeDe : [],
+            usaColigadaJornada: catalogo && catalogo.usaColigadaJornada ? true : false,
+            coligadaConstraintField: catalogo && catalogo.coligadaConstraintField ? catalogo.coligadaConstraintField : ""
         });
     },
 
@@ -935,15 +1170,64 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         var datasetId = $.trim($select.attr("data-dataset") || "");
         var valueField = $.trim($select.attr("data-value-field") || "");
         var textField = $.trim($select.attr("data-text-field") || "");
+        var campoId = $.trim($select.attr("data-campo-id") || "");
         var valorAtual = $.trim($select.attr("data-valor-atual") || $select.val() || "");
+        var dependeDe = [];
+        var constraints = [];
+        var coligadaObrigatoria = $.trim($select.attr("data-usa-coligada-jornada") || "").toLowerCase() === "true";
+        var coligadaConstraintField = $.trim($select.attr("data-coligada-constraint-field") || "");
 
         if (!datasetId) {
-            $select.html('<option value="">Dataset nao configurado</option>');
+            that.limparSelectZoomCampo($select, "Dataset nao configurado", valorAtual);
             return;
         }
 
-        $select.attr("data-loading", "true");
-        $select.html('<option value="">Carregando...</option>');
+        try {
+            dependeDe = JSON.parse($select.attr("data-depende-de") || "[]");
+        } catch (e) {
+            dependeDe = [];
+        }
+
+        for (var d = 0; d < dependeDe.length; d++) {
+            var dependencia = dependeDe[d] || {};
+            var valorDependencia = that.obterValorCampoNoPainelJornada($select, dependencia.campoId || "");
+
+            if (!valorDependencia) {
+                var campoDependencia = that.obterCampoDoCatalogo(dependencia.campoId || "");
+                var labelDependencia = dependencia.label || (campoDependencia && campoDependencia.label ? campoDependencia.label : (dependencia.campoId || "campo"));
+                that.limparSelectZoomCampo($select, "Selecione " + labelDependencia + " para carregar", valorAtual);
+                return;
+            }
+
+            constraints.push({
+                fieldName: dependencia.constraintField || dependencia.campoId || "",
+                initialValue: valorDependencia,
+                finalValue: valorDependencia,
+                constraintType: "MUST",
+                type: "MUST",
+                likeSearch: false
+            });
+        }
+
+        if (coligadaObrigatoria) {
+            var coligadaBase = that.obterColigadaBaseDoPainelJornada($select);
+
+            if (!coligadaBase) {
+                that.limparSelectZoomCampo($select, "Defina uma coligada especifica para carregar", valorAtual);
+                return;
+            }
+
+            constraints.push({
+                fieldName: coligadaConstraintField || "ID_EMPRESA",
+                initialValue: coligadaBase,
+                finalValue: coligadaBase,
+                constraintType: "MUST",
+                type: "MUST",
+                likeSearch: false
+            });
+        }
+
+        var cacheKey = that.montarChaveCacheZoom(datasetId, constraints);
 
         var preencher = function (itens) {
             var html = '<option value=""></option>';
@@ -951,29 +1235,13 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
 
             for (var i = 0; i < itens.length; i++) {
                 var item = itens[i] || {};
-                var valorItem = item[valueField];
-
-                if (valorItem === undefined && valueField) {
-                    valorItem = item[String(valueField).toUpperCase()];
-                }
-
-                if (valorItem === undefined && valueField) {
-                    valorItem = item[String(valueField).toLowerCase()];
-                }
+                var valorItem = that.resolverValorItemZoom(item, valueField);
 
                 if (valorItem === undefined || valorItem === null) {
                     valorItem = "";
                 }
 
-                var textoItem = item[textField];
-
-                if (textoItem === undefined && textField) {
-                    textoItem = item[String(textField).toUpperCase()];
-                }
-
-                if (textoItem === undefined && textField) {
-                    textoItem = item[String(textField).toLowerCase()];
-                }
+                var textoItem = that.resolverTextoItemZoom(item, textField, valorItem);
 
                 if (textoItem === undefined || textoItem === null || textoItem === "") {
                     textoItem = valorItem;
@@ -991,6 +1259,7 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             }
 
             $select.html(html);
+
             if (valorAtual) {
                 $select.val(valorAtual);
             }
@@ -999,28 +1268,38 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             $select.removeAttr("data-loading");
         };
 
-        if (that.opcoesDatasetCache.hasOwnProperty(datasetId)) {
-            preencher(that.opcoesDatasetCache[datasetId] || []);
+        if (Object.prototype.hasOwnProperty.call(that.opcoesDatasetCache, cacheKey)) {
+            preencher(that.opcoesDatasetCache[cacheKey] || []);
             return;
         }
+
+        $select.attr("data-loading", "true");
+        $select.html('<option value="">Carregando...</option>');
 
         $.ajax({
             url: '/api/public/ecm/dataset/datasets',
             type: 'POST',
             contentType: 'application/json',
+            dataType: 'json',
             data: JSON.stringify({
-                name: datasetId
+                name: datasetId,
+                constraints: constraints
             }),
             success: function (res) {
-                var itens = res && res.content && res.content.values ? res.content.values : [];
-                that.opcoesDatasetCache[datasetId] = itens;
+                var itens = [];
+
+                if (res && res.content && res.content.values) {
+                    itens = res.content.values;
+                } else if (res && res.values) {
+                    itens = res.values;
+                }
+
+                that.opcoesDatasetCache[cacheKey] = itens;
                 preencher(itens);
             },
             error: function () {
-                that.opcoesDatasetCache[datasetId] = [];
-                $select.html('<option value="">Erro ao carregar</option>');
-                $select.attr("data-loaded", "true");
-                $select.removeAttr("data-loading");
+                that.opcoesDatasetCache[cacheKey] = [];
+                that.limparSelectZoomCampo($select, "Erro ao carregar", valorAtual);
             }
         });
     },
@@ -1097,7 +1376,16 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                 }
                 html += '</select>';
             } else if (tipoCampo === 'zoom') {
-                html += '<select class="form-control campo-jornada-valor campo-jornada-zoom" data-dataset="' + that.escapeHtml(campo.datasetId || '') + '" data-value-field="' + that.escapeHtml(campo.valueField || '') + '" data-text-field="' + that.escapeHtml(campo.textField || '') + '" data-valor-atual="' + that.escapeHtml(valorCampo) + '" data-loaded="false">';
+                html += '<select class="form-control campo-jornada-valor campo-jornada-zoom" ' +
+                    'data-campo-id="' + that.escapeHtml(campo.id || '') + '" ' +
+                    'data-dataset="' + that.escapeHtml(campo.datasetId || '') + '" ' +
+                    'data-value-field="' + that.escapeHtml(campo.valueField || '') + '" ' +
+                    'data-text-field="' + that.escapeHtml(campo.textField || '') + '" ' +
+                    'data-depende-de="' + that.escapeHtml(JSON.stringify(campo.dependeDe || [])) + '" ' +
+                    'data-usa-coligada-jornada="' + (campo.usaColigadaJornada ? 'true' : 'false') + '" ' +
+                    'data-coligada-constraint-field="' + that.escapeHtml(campo.coligadaConstraintField || '') + '" ' +
+                    'data-valor-atual="' + that.escapeHtml(valorCampo) + '" ' +
+                    'data-loaded="false">';
                 if (valorCampo) {
                     html += '<option value="' + that.escapeHtml(valorCampo) + '" selected="selected">' + that.escapeHtml(valorCampo) + '</option>';
                     html += '<option value="">Clique para carregar...</option>';
@@ -1191,7 +1479,11 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                     datasetId: campoCatalogo.datasetId || "",
                     campoId: campoCatalogo.id || campoId,
                     valueField: campoCatalogo.valueField || "",
-                    textField: campoCatalogo.textField || ""
+                    textField: campoCatalogo.textField || "",
+                    hiddenFields: campoCatalogo.hiddenFields || [],
+                    dependeDe: campoCatalogo.dependeDe || [],
+                    usaColigadaJornada: campoCatalogo.usaColigadaJornada ? true : false,
+                    coligadaConstraintField: campoCatalogo.coligadaConstraintField || ""
                 })
             });
         });
@@ -1253,6 +1545,18 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
 
         $(document).off('input' + namespace + ' change' + namespace + ' blur' + namespace, seletorContainer + ' :input');
         $(document).on('input' + namespace + ' change' + namespace + ' blur' + namespace, seletorContainer + ' :input', function () {
+            var $campo = $(this);
+            var ehColigada = $campo.hasClass('jornada-coligadas');
+            var campoIdAlterado = $.trim($campo.closest('tr[data-campo-id]').attr('data-campo-id') || $campo.attr('data-campo-id') || '');
+
+            if ($campo.hasClass("campo-jornada-zoom")) {
+                $campo.attr("data-valor-atual", $.trim($campo.val() || ""));
+            }
+
+            if (campoIdAlterado || ehColigada) {
+                that.limparCamposZoomDependentesDoCampo($campo, ehColigada ? "__JORNADA_COLIGADA__" : campoIdAlterado, ehColigada);
+            }
+
             that.sincronizarJornadasDosPaineis();
             that.sincronizarCamposJornadaDosPaineis();
         });
@@ -1301,7 +1605,9 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             var valorFinal = selecionadas.indexOf("*") !== -1 ? "*" : selecionadas.join(",");
             $hidden.val(valorFinal);
             that.renderizarColigadasSelecionadasWrapper($wrapper);
+            that.limparCamposZoomDependentesDoCampo($hidden, "__JORNADA_COLIGADA__", true);
             that.sincronizarJornadasDosPaineis();
+            that.sincronizarCamposJornadaDosPaineis();
         });
 
         $(document).off('click' + namespace, seletorContainer + ' .btn-remove-coligada-jornada');
@@ -1325,7 +1631,9 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             var valorFinal = novaLista.indexOf("*") !== -1 ? "*" : novaLista.join(",");
             $hidden.val(valorFinal);
             that.renderizarColigadasSelecionadasWrapper($wrapper);
+            that.limparCamposZoomDependentesDoCampo($hidden, "__JORNADA_COLIGADA__", true);
             that.sincronizarJornadasDosPaineis();
+            that.sincronizarCamposJornadaDosPaineis();
         });
     },
 
