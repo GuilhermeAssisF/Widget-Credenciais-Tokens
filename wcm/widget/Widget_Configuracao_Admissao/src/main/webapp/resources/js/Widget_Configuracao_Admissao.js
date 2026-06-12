@@ -310,11 +310,13 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             },
             {
                 id: "FUN_IDDESCFUN",
-                label: "Funcao",
+                label: "Função",
                 tipo: "zoom",
                 datasetId: "ds_irho_funcao",
                 valueField: "CODIGO",
-                textField: "IDDESC_FUNCAO"
+                textField: "IDDESC_FUNCAO",
+                usaColigadaJornada: true,
+                coligadaConstraintField: "ID_EMPRESA"
             },
             {
                 id: "FUN_IDDESCTURN",
@@ -322,7 +324,9 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                 tipo: "zoom",
                 datasetId: "ds_irho_turnoTrabalho",
                 valueField: "CODIGO",
-                textField: "IDDESC_HORARIO"
+                textField: "IDDESC_HORARIO",
+                usaColigadaJornada: true,
+                coligadaConstraintField: "ID_EMPRESA"
             },
             {
                 id: "FUN_SEQTURN_IDDESC_AD",
@@ -879,6 +883,106 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         return valorItem;
     },
 
+    resolverDescricaoItemZoom: function (item, textField, valorItem) {
+        var camposPossiveis = [];
+
+        if (textField) {
+            camposPossiveis.push(textField);
+        }
+
+        camposPossiveis = camposPossiveis.concat([
+            "IDDESC_SINDICATO",
+            "IDDESC_FUNCAO",
+            "IDDESC_HORARIO",
+            "IDDESC_TIPORECEBIMENTO",
+            "IDDESC_OCORRENCIA",
+            "IDDESC_CATSEFIP",
+            "IDDESC_SITUACAO",
+            "IDDESC_VINCULO",
+            "IDDESC_CATEGORIAESOCIAL",
+            "TIPO_FUNCIONARIO",
+            "DESCRICAO",
+            "DESCRIÇÃO",
+            "NOME",
+            "NOME_FUNCIONARIO",
+            "FUNCAO",
+            "HORARIO"
+        ]);
+
+        var usados = {};
+        var valorNorm = $.trim(String(valorItem || "")).toLowerCase();
+
+        for (var i = 0; i < camposPossiveis.length; i++) {
+            var campo = camposPossiveis[i];
+
+            if (!campo || usados[campo]) {
+                continue;
+            }
+
+            usados[campo] = true;
+
+            var texto = this.resolverTextoItemZoom(item, campo, "");
+            var textoNorm = $.trim(String(texto || "")).toLowerCase();
+
+            if (texto && textoNorm && textoNorm !== valorNorm) {
+                return texto;
+            }
+
+            if (texto && valorItem && String(texto).indexOf(String(valorItem) + " - ") === 0) {
+                return texto;
+            }
+        }
+
+        return this.resolverTextoItemZoom(item, textField, valorItem);
+    },
+
+    formatarTextoCodigoDescricao: function (codigo, descricao) {
+        var cod = $.trim(String(codigo || ""));
+        var desc = $.trim(String(descricao || ""));
+
+        if (!cod && !desc) {
+            return "";
+        }
+
+        if (!cod) {
+            return desc;
+        }
+
+        if (!desc) {
+            return cod;
+        }
+
+        if (desc === cod || desc.indexOf(cod + " - ") === 0 || desc.indexOf(cod + " — ") === 0) {
+            return desc;
+        }
+
+        return cod + " - " + desc;
+    },
+
+    formatarTextoCodigoDescricao: function (codigo, descricao) {
+        var cod = $.trim(String(codigo || ""));
+        var desc = $.trim(String(descricao || ""));
+
+        if (!cod && !desc) {
+            return "";
+        }
+
+        if (!cod) {
+            return desc;
+        }
+
+        if (!desc) {
+            return cod;
+        }
+
+        // Evita duplicar quando o dataset já retorna "001 - Descrição"
+        if (desc === cod || desc.indexOf(cod + " - ") === 0 || desc.indexOf(cod + " — ") === 0) {
+            return desc;
+        }
+
+        return cod + " - " + desc;
+    },
+
     montarChaveCacheZoom: function (datasetId, constraints) {
         return String(datasetId || "") + "::" + JSON.stringify(constraints || []);
     },
@@ -1031,7 +1135,7 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
 
         try {
             codigo = codigo.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        } catch (e) {}
+        } catch (e) { }
 
         if (codigo.toUpperCase() === "CLT") {
             return "CLT";
@@ -1249,8 +1353,21 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         var coligadaObrigatoria = $.trim($select.attr("data-usa-coligada-jornada") || "").toLowerCase() === "true";
         var coligadaConstraintField = $.trim($select.attr("data-coligada-constraint-field") || "");
 
+        function adicionarConstraintFluig(nomeCampo, valor) {
+            if (!nomeCampo || valor === undefined || valor === null || valor === "") {
+                return;
+            }
+
+            constraints.push({
+                "_field": String(nomeCampo),
+                "_initialValue": String(valor),
+                "_finalValue": String(valor),
+                "_type": 1
+            });
+        }
+
         if (!datasetId) {
-            that.limparSelectZoomCampo($select, "Dataset nao configurado", valorAtual);
+            that.limparSelectZoomCampo($select, "Dataset não configurado", valorAtual);
             return;
         }
 
@@ -1271,32 +1388,30 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                 return;
             }
 
-            constraints.push({
-                fieldName: dependencia.constraintField || dependencia.campoId || "",
-                initialValue: valorDependencia,
-                finalValue: valorDependencia,
-                constraintType: "MUST",
-                type: "MUST",
-                likeSearch: false
-            });
+            adicionarConstraintFluig(
+                dependencia.constraintField || dependencia.campoId || "",
+                valorDependencia
+            );
         }
 
         if (coligadaObrigatoria) {
             var coligadaBase = that.obterColigadaBaseDoPainelJornada($select);
 
+            // Para Sindicato, quando a jornada estiver marcada como "Todas",
+            // usamos a coligada 1 como referência, pois os sindicatos são os mesmos.
+            if (!coligadaBase && (campoId === "zoom_sindicato" || campoId === "zoom_sindicato_filiacao")) {
+                coligadaBase = "1";
+            }
+
             if (!coligadaBase) {
-                that.limparSelectZoomCampo($select, "Defina uma coligada especifica para carregar", valorAtual);
+                that.limparSelectZoomCampo($select, "Defina uma coligada específica para carregar", valorAtual);
                 return;
             }
 
-            constraints.push({
-                fieldName: coligadaConstraintField || "ID_EMPRESA",
-                initialValue: coligadaBase,
-                finalValue: coligadaBase,
-                constraintType: "MUST",
-                type: "MUST",
-                likeSearch: false
-            });
+            adicionarConstraintFluig(
+                coligadaConstraintField || "ID_EMPRESA",
+                coligadaBase
+            );
         }
 
         var cacheKey = that.montarChaveCacheZoom(datasetId, constraints);
@@ -1313,11 +1428,15 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                     valorItem = "";
                 }
 
-                var textoItem = that.resolverTextoItemZoom(item, textField, valorItem);
+                var textoItem = that.resolverDescricaoItemZoom(item, textField, valorItem);
 
                 if (textoItem === undefined || textoItem === null || textoItem === "") {
                     textoItem = valorItem;
                 }
+
+                textoItem = that.formatarTextoCodigoDescricao(valorItem, textoItem);
+
+                textoItem = that.formatarTextoCodigoDescricao(valorItem, textoItem);
 
                 if (String(valorItem) === String(valorAtual)) {
                     valorEncontrado = true;
@@ -1432,10 +1551,15 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
         for (var f = 0; f < this.catalogoCamposJornada.length; f++) {
             var campo = this.catalogoCamposJornada[f];
             var configuracaoCampo = that.obterCampoParametrizado(codigo, campo.id) || {};
+
             var valorCampo = configuracaoCampo.valor || "";
             var descricaoCampo = configuracaoCampo.descricao || "";
             var valorExibicaoCampo = descricaoCampo || valorCampo;
             var tipoCampo = campo.tipo || "texto";
+
+            if (tipoCampo === "zoom") {
+                valorExibicaoCampo = that.formatarTextoCodigoDescricao(valorCampo, descricaoCampo || valorCampo);
+            }
 
             html += '<tr data-jornada="' + that.escapeHtml(codigo) + '" data-campo-id="' + that.escapeHtml(campo.id) + '">';
             html += '<td>' + that.escapeHtml(campo.label) + '</td>';
