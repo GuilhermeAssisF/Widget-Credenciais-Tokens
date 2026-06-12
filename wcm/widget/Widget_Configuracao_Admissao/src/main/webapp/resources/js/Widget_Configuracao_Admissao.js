@@ -327,18 +327,46 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             {
                 id: "FUN_SEQTURN_IDDESC_AD",
                 label: "Sequencia do Turno",
-                tipo: "select",
-                opcoes: [
-                    { valor: "1", texto: "1" },
-                    { valor: "2", texto: "2" },
-                    { valor: "3", texto: "3" },
-                    { valor: "4", texto: "4" },
-                    { valor: "5", texto: "5" },
-                    { valor: "6", texto: "6" },
-                    { valor: "7", texto: "7" },
-                    { valor: "8", texto: "8" },
-                    { valor: "9", texto: "9" },
-                    { valor: "10", texto: "10" }
+                tipo: "zoom",
+                datasetId: "ds_irho_seqTurno",
+                valueField: "INDINICIOHOR",
+                textField: "INDINICIOHOR",
+                hiddenFields: [
+                    {
+                        id: "FUN_SEQTURN",
+                        field: "INDINICIOHOR"
+                    },
+                    {
+                        id: "FUN_SEQTURN_DESC_AD",
+                        field: "INDINICIOHOR"
+                    }
+                ],
+                dependeDe: [
+                    {
+                        campoId: "FUN_IDDESCTURN",
+                        constraintField: "CODHORARIO",
+                        label: "Turno de Trabalho"
+                    }
+                ],
+                usaColigadaJornada: true,
+                coligadaConstraintField: "ID_EMPRESA"
+            },
+            {
+                id: "FUN_TIPOPGTO_IDDESC_AD",
+                label: "Tipo de Recebimento",
+                tipo: "zoom",
+                datasetId: "ds_irho_codRecebimento",
+                valueField: "CODCLIENTE",
+                textField: "IDDESC_TIPORECEBIMENTO",
+                hiddenFields: [
+                    {
+                        id: "FUN_TIPOPGTO",
+                        field: "CODCLIENTE"
+                    },
+                    {
+                        id: "FUN_TIPOPGTO_DESC_AD",
+                        field: "DESCRICAO"
+                    }
                 ]
             },
             {
@@ -351,14 +379,6 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                     { valor: "3", texto: "Funcoes Especificadas" },
                     { valor: "4", texto: "Teletrabalho" }
                 ]
-            },
-            {
-                id: "FUN_TIPOPGTO_IDDESC_AD",
-                label: "Tipo de Recebimento",
-                tipo: "zoom",
-                datasetId: "ds_irho_codRecebimento",
-                valueField: "CODCLIENTE",
-                textField: "IDDESC_TIPORECEBIMENTO"
             },
             {
                 id: "cpQtdHorasMes",
@@ -390,44 +410,96 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                 ]
             },
             {
-                id: "FUN_CODDESCSINDICATOFILIACAO",
+                id: "zoom_sindicato",
+                label: "Sindicato",
+                tipo: "zoom",
+                datasetId: "ds_irho_sindicato",
+                valueField: "CODIGO",
+                textField: "IDDESC_SINDICATO",
+                hiddenFields: [
+                    {
+                        id: "cod_sindicato",
+                        field: "CODIGO"
+                    }
+                ],
+                usaColigadaJornada: true,
+                coligadaConstraintField: "ID_EMPRESA"
+            },
+            {
+                id: "zoom_sindicato_filiacao",
                 label: "Sindicato Filiacao",
                 tipo: "zoom",
                 datasetId: "ds_irho_sindicato",
-                valueField: "IDDESC_SINDICATO",
-                textField: "IDDESC_SINDICATO"
+                valueField: "CODIGO",
+                textField: "IDDESC_SINDICATO",
+                hiddenFields: [
+                    {
+                        id: "FUN_CODDESCSINDICATOFILIACAO",
+                        field: "CODIGO"
+                    }
+                ],
+                usaColigadaJornada: true,
+                coligadaConstraintField: "ID_EMPRESA"
             },
             {
-                id: "FUN_CODOCORRENCIA_IDDESC",
+                id: "zoom_ocorrencia_sefip",
                 label: "Ocorrencia SEFIP",
                 tipo: "zoom",
                 datasetId: "ds_IRHO_codOcorrenciaSefip",
                 valueField: "IDDESC_OCORRENCIA",
-                textField: "IDDESC_OCORRENCIA"
+                textField: "IDDESC_OCORRENCIA",
+                hiddenFields: [
+                    {
+                        id: "FUN_CODOCORRENCIA_IDDESC",
+                        field: "IDDESC_OCORRENCIA"
+                    }
+                ]
             },
             {
-                id: "FUN_CATSEFIP_IDDESC",
+                id: "zoom_categoria_sefip",
                 label: "Categoria SEFIP",
                 tipo: "zoom",
                 datasetId: "ds_irho_codCategoriaSefip",
                 valueField: "IDDESC_CATSEFIP",
-                textField: "IDDESC_CATSEFIP"
+                textField: "IDDESC_CATSEFIP",
+                hiddenFields: [
+                    {
+                        id: "FUN_CATSEFIP_IDDESC",
+                        field: "IDDESC_CATSEFIP"
+                    }
+                ]
             },
             {
-                id: "cpSituacaoRais",
+                id: "zoom_situacao_rais",
                 label: "Situacao RAIS",
                 tipo: "zoom",
                 datasetId: "ds_irho_situacaoRais",
-                valueField: "IDDESC_SITUACAO",
-                textField: "IDDESC_SITUACAO"
+                valueField: "COD_SITUACAO",
+                textField: "IDDESC_SITUACAO",
+                hiddenFields: [
+                    {
+                        id: "cpSituacaoRais",
+                        field: "COD_SITUACAO"
+                    }
+                ]
             },
             {
-                id: "FUN_VINCEMPREG_IDDESC_AD",
+                id: "zoom_vinculo_rais",
                 label: "Vinculo RAIS",
                 tipo: "zoom",
                 datasetId: "ds_irho_vinculoRais",
-                valueField: "IDDESC_VINCULO",
-                textField: "IDDESC_VINCULO"
+                valueField: "CODCLIENTE",
+                textField: "IDDESC_VINCULO",
+                hiddenFields: [
+                    {
+                        id: "FUN_VINCEMPREG",
+                        field: "CODCLIENTE"
+                    },
+                    {
+                        id: "FUN_VINCEMPREG_IDDESC_AD",
+                        field: "IDDESC_VINCULO"
+                    }
+                ]
             },
             {
                 id: "MarcaPonto",
@@ -1361,6 +1433,8 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             var campo = this.catalogoCamposJornada[f];
             var configuracaoCampo = that.obterCampoParametrizado(codigo, campo.id) || {};
             var valorCampo = configuracaoCampo.valor || "";
+            var descricaoCampo = configuracaoCampo.descricao || "";
+            var valorExibicaoCampo = descricaoCampo || valorCampo;
             var tipoCampo = campo.tipo || "texto";
 
             html += '<tr data-jornada="' + that.escapeHtml(codigo) + '" data-campo-id="' + that.escapeHtml(campo.id) + '">';
@@ -1372,7 +1446,8 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                 html += '<option value="">Selecione</option>';
                 for (var o = 0; o < (campo.opcoes || []).length; o++) {
                     var opcao = campo.opcoes[o];
-                    html += '<option value="' + that.escapeHtml(opcao.valor) + '"' + (String(opcao.valor) === String(valorCampo) ? ' selected="selected"' : '') + '>' + that.escapeHtml(opcao.texto) + '</option>';
+                    var selecionado = String(opcao.valor) === String(valorCampo) || String(opcao.texto) === String(valorExibicaoCampo);
+                    html += '<option value="' + that.escapeHtml(opcao.valor) + '"' + (selecionado ? ' selected="selected"' : '') + '>' + that.escapeHtml(opcao.texto) + '</option>';
                 }
                 html += '</select>';
             } else if (tipoCampo === 'zoom') {
@@ -1386,8 +1461,8 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                     'data-coligada-constraint-field="' + that.escapeHtml(campo.coligadaConstraintField || '') + '" ' +
                     'data-valor-atual="' + that.escapeHtml(valorCampo) + '" ' +
                     'data-loaded="false">';
-                if (valorCampo) {
-                    html += '<option value="' + that.escapeHtml(valorCampo) + '" selected="selected">' + that.escapeHtml(valorCampo) + '</option>';
+                if (valorCampo || valorExibicaoCampo) {
+                    html += '<option value="' + that.escapeHtml(valorCampo || valorExibicaoCampo) + '" selected="selected">' + that.escapeHtml(valorExibicaoCampo || valorCampo) + '</option>';
                     html += '<option value="">Clique para carregar...</option>';
                 } else {
                     html += '<option value="" selected="selected">Clique para carregar...</option>';
@@ -1465,14 +1540,39 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             }
             var campoCatalogo = that.obterCampoDoCatalogo(campoId) || {};
             var $valor = $linha.find('.campo-jornada-valor').first();
+            var valorCampo = $.trim($valor.val() || '');
+            var descricaoCampo = "";
+
+            if ($valor.is('select')) {
+                descricaoCampo = $.trim($valor.find('option:selected').text() || '');
+
+                if (!descricaoCampo || descricaoCampo === "Selecione" || descricaoCampo === "Clique para carregar..." || descricaoCampo === valorCampo) {
+                    descricaoCampo = valorCampo;
+                }
+            } else {
+                descricaoCampo = valorCampo;
+            }
+
+            if (window.DEBUG_PARAM_JORNADA !== false) {
+                console.log("[Widget Jornada] Campo sincronizado", {
+                    jornadaCodigo: jornadaCodigo,
+                    campoId: campoId,
+                    campoTipo: campoCatalogo.tipo || "",
+                    valorTecnico: valorCampo,
+                    textoVisual: descricaoCampo,
+                    datasetId: campoCatalogo.datasetId || "",
+                    valueField: campoCatalogo.valueField || "",
+                    textField: campoCatalogo.textField || ""
+                });
+            }
 
             novaLista.push({
                 jornadaCodigo: jornadaCodigo,
                 campoId: campoId,
                 campoLabel: campoCatalogo.label || $linha.find('td').eq(0).text(),
                 campoTipo: campoCatalogo.tipo || "",
-                valor: $.trim($valor.val() || ''),
-                descricao: "",
+                valor: valorCampo,
+                descricao: descricaoCampo,
                 ativo: "S",
                 ordem: "",
                 jsonExtra: JSON.stringify({
@@ -1487,6 +1587,20 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                 })
             });
         });
+
+        if (window.DEBUG_PARAM_JORNADA !== false) {
+            console.log("[Widget Jornada] Resumo final da sincronizacao de campos", novaLista.map(function (item, idx) {
+                return {
+                    indice: idx + 1,
+                    jornadaCodigo: item.jornadaCodigo || "",
+                    campoId: item.campoId || "",
+                    campoTipo: item.campoTipo || "",
+                    valor: item.valor || "",
+                    descricao: item.descricao || "",
+                    jsonExtra: item.jsonExtra || ""
+                };
+            }));
+        }
 
         this.camposJornadaAdmissao = novaLista;
     },
@@ -1945,6 +2059,18 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
 
         this.sincronizarJornadasDosPaineis();
         this.sincronizarCamposJornadaDosPaineis();
+
+        if (window.DEBUG_PARAM_JORNADA !== false) {
+            console.log("[Widget Jornada] Tabela final pronta para gravacao", this.camposJornadaAdmissao.map(function (item, idx) {
+                return {
+                    indice: idx + 1,
+                    jornadaCodigo: item.jornadaCodigo || "",
+                    campoId: item.campoId || "",
+                    valor: item.valor || "",
+                    descricao: item.descricao || ""
+                };
+            }));
+        }
 
         var camposForm = [
             "FLUIG_SOAP_USER", "FLUIG_SOAP_PASS",
