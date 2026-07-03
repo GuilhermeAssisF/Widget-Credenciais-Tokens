@@ -952,29 +952,6 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
             return cod;
         }
 
-        if (desc === cod || desc.indexOf(cod + " - ") === 0 || desc.indexOf(cod + " — ") === 0) {
-            return desc;
-        }
-
-        return cod + " - " + desc;
-    },
-
-    formatarTextoCodigoDescricao: function (codigo, descricao) {
-        var cod = $.trim(String(codigo || ""));
-        var desc = $.trim(String(descricao || ""));
-
-        if (!cod && !desc) {
-            return "";
-        }
-
-        if (!cod) {
-            return desc;
-        }
-
-        if (!desc) {
-            return cod;
-        }
-
         // Evita duplicar quando o dataset já retorna "001 - Descrição"
         if (desc === cod || desc.indexOf(cod + " - ") === 0 || desc.indexOf(cod + " — ") === 0) {
             return desc;
@@ -1433,8 +1410,6 @@ var Widget_Configuracao_Admissao = SuperWidget.extend({
                 if (textoItem === undefined || textoItem === null || textoItem === "") {
                     textoItem = valorItem;
                 }
-
-                textoItem = that.formatarTextoCodigoDescricao(valorItem, textoItem);
 
                 textoItem = that.formatarTextoCodigoDescricao(valorItem, textoItem);
 

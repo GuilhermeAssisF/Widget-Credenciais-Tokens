@@ -141,40 +141,107 @@ function doSaveAndSendTask(payload, config) {
 
 function doUpdateCardData(payload, config) {
     var companyId = config.FLUIG_TENANT_ID;
-    
-    // Função auxiliar simples para dar escape no XML caso seja enviado JSON parseado para cá
+
     function escapeXML(str) {
-        if (typeof str !== 'string') return str;
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+        if (str === undefined || str === null) return "";
+
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&apos;");
     }
-    
+
+    if (!payload.cardId) {
+        throw "UPDATE_CARD_DATA: cardId não informado.";
+    }
+
+    if (!payload.cardData && !payload.cardDataXml) {
+        throw "UPDATE_CARD_DATA: cardData/cardDataXml não informado.";
+    }
+
     var cardDataXml = "";
+    var camposLog = [];
+
     if (payload.cardData) {
         var dadosObjeto = payload.cardData;
+
         for (var key in dadosObjeto) {
             if (dadosObjeto.hasOwnProperty(key)) {
-                var valor = (dadosObjeto[key] === undefined || dadosObjeto[key] === null) ? "" : String(dadosObjeto[key]);
-                cardDataXml += '<item><field>' + key + '</field><value>' + escapeXML(valor) + '</value></item>';
+                var nomeCampo = String(key || "").trim();
+
+                if (nomeCampo === "") {
+                    continue;
+                }
+
+                var valor = dadosObjeto[key];
+
+                if (valor === undefined || valor === null) {
+                    valor = "";
+                }
+
+                valor = String(valor);
+
+                camposLog.push(nomeCampo + "(" + valor.length + ")");
+
+                cardDataXml +=
+                    "<item>" +
+                    "<field>" + escapeXML(nomeCampo) + "</field>" +
+                    "<value>" + escapeXML(valor) + "</value>" +
+                    "</item>";
             }
         }
     } else if (payload.cardDataXml) {
-        cardDataXml = payload.cardDataXml; // Permite mandar XML já montado tbm
+        cardDataXml = String(payload.cardDataXml);
+        camposLog.push("cardDataXml(" + cardDataXml.length + ")");
     }
 
-    var xmlSoap = '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.dm.ecm.technology.totvs.com/">' +
+    log.info("UPDATE_CARD_DATA cardId=" + payload.cardId + " campos=" + camposLog.join(", "));
+
+    var xmlSoap =
+        '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://ws.dm.ecm.technology.totvs.com/">' +
         '<soapenv:Header/>' +
         '<soapenv:Body>' +
         '<ws:updateCardData>' +
-        '<companyId>' + companyId + '</companyId>' +
-        '<username>' + config.FLUIG_SOAP_USER + '</username>' +
-        '<password>' + config.FLUIG_SOAP_PASS + '</password>' +
-        '<cardId>' + payload.cardId + '</cardId>' +
+        '<companyId>' + escapeXML(companyId) + '</companyId>' +
+        '<username>' + escapeXML(config.FLUIG_SOAP_USER) + '</username>' +
+        '<password>' + escapeXML(config.FLUIG_SOAP_PASS) + '</password>' +
+        '<cardId>' + escapeXML(payload.cardId) + '</cardId>' +
         '<cardData>' + cardDataXml + '</cardData>' +
         '</ws:updateCardData>' +
         '</soapenv:Body>' +
         '</soapenv:Envelope>';
 
-    return callInternalFluigAPI(config, "/webdesk/ECMCardService?wsdl", "POST", xmlSoap, "text/xml;charset=utf-8");
+    var retorno = callInternalFluigAPI(
+        config,
+        "/webdesk/ECMCardService?wsdl",
+        "POST",
+        xmlSoap,
+        "text/xml;charset=utf-8"
+    );
+
+    log.info("UPDATE_CARD_DATA retorno HTTP=" + retorno.status);
+
+    if (Number(retorno.status) >= 400) {
+        log.error("UPDATE_CARD_DATA falhou. cardId=" + payload.cardId + " campos=" + camposLog.join(", "));
+        log.error("UPDATE_CARD_DATA resposta=" + String(retorno.response || "").substring(0, 3000));
+
+        return {
+            success: false,
+            status: Number(retorno.status),
+            message: "Falha no updateCardData",
+            fields: camposLog,
+            response: String(retorno.response || "")
+        };
+    }
+
+    return {
+        success: true,
+        status: Number(retorno.status),
+        fields: camposLog,
+        response: String(retorno.response || "")
+    };
 }
 
 function doGetDataset(payload) {
